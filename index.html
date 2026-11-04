@@ -225,7 +225,6 @@ async function handleAuth(){
       if(full_name.length<3)throw new Error('اكتب الاسم بالكامل');
       if(!/^[0-9+]{8,15}$/.test(phone))throw new Error('رقم الهاتف غير صحيح');
       
-      // فلتر صارم لرقم اللوحة (3 أرقام + 3 حروف على الأقل)
       if(role==='driver'){
         if(!vehicle_type || vehicle_type.length < 3) throw new Error('اكتب نوع العربية بشكل صحيح (مثال: سوزوكي، جامبو)');
         
@@ -236,9 +235,13 @@ async function handleAuth(){
            throw new Error('رقم اللوحة غير صحيح. لازم تكتب رقم اللوحة الفعلي.');
         }
         
-        // عد الأرقام (عربي وإنجليزي)
+        // منع الحروف المتكررة 3 مرات ورا بعض زي تتت
+        if(/(.)\1\1/.test(plate_clean.replace(/\s/g, ''))) {
+           throw new Error('رقم اللوحة به تكرار غريب. تأكد من كتابته بشكل صحيح.');
+        }
+
+        // عد الأرقام (عربي وإنجليزي) والحروف
         const digitCount = (plate_clean.match(/[0-9٠-٩]/g) || []).length;
-        // عد الحروف (عربي وإنجليزي)
         const letterCount = (plate_clean.match(/[a-zA-Zأ-يء]/g) || []).length;
         
         if (digitCount < 3) {
