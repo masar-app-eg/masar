@@ -225,10 +225,22 @@ async function handleAuth(){
       if(full_name.length<3)throw new Error('اكتب الاسم بالكامل');
       if(!/^[0-9+]{8,15}$/.test(phone))throw new Error('رقم الهاتف غير صحيح');
       
-      // شروط صارمة للسائق عشان نمنع أي حد يسجل من غير بيانات صح
+      // فلتر ذكي لرقم اللوحة
       if(role==='driver'){
         if(!vehicle_type || vehicle_type.length < 3) throw new Error('اكتب نوع العربية بشكل صحيح (مثال: سوزوكي، جامبو)');
-        if(!plate_number || plate_number.length < 3 || plate_number.includes('لا يوجد')) throw new Error('رقم اللوحة إجباري ومهم جداً، متكتبش "لا يوجد"');
+        
+        const plate_clean = plate_number.replace(/\s+/g, ' '); 
+        const forbidden = ['لا يوجد', 'مفيش', 'بدون', 'مش معايا', 'لسه', 'مستلمة'];
+        
+        if(forbidden.some(w => plate_clean.includes(w))) {
+           throw new Error('رقم اللوحة غير صحيح. لازم تكتب رقم اللوحة الفعلي.');
+        }
+        if(plate_clean.length < 4) {
+           throw new Error('رقم اللوحة قصير جداً. يرجى كتابة رقم اللوحة كامل.');
+        }
+        if(!/[0-9٠-٩]/.test(plate_clean)) {
+           throw new Error('رقم اللوحة يجب أن يحتوي على أرقام (مثال: 1234 أ ب ج).');
+        }
       }
       
       const{data,error}=await db.auth.signUp({email,password,options:{data:{full_name,phone,role,vehicle_type,plate_number}}});
@@ -435,7 +447,6 @@ async function loadAdminData(){
 async function approveDriver(id){ try{ await rpc('approve_driver',{p_id:id}); alert('تم تفعيل السائق'); loadAdminData(); }catch(e){alert(e.message);} }
 async function adjustWallet(id){ const a=prompt('أدخل المبلغ (موجب للإضافة، سالب للخصم):'); if(!a)return; try{ await rpc('admin_adjust_wallet',{p_id:id,p_amount:Number(a)}); loadAdminData(); }catch(e){alert(e.message);} }
 
-// دالة حذف المستخدم
 async function deleteUserAccount(id, name) {
   if(!confirm(`هل أنت متأكد من حذف حساب (${name}) نهائياً؟ لا يمكن التراجع عن هذه الخطوة!`)) return;
   try {
