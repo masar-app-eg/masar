@@ -24,7 +24,6 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
 </head>
 <body>
 
-<!-- بانر التثبيت -->
 <div id="installBanner" class="hide fixed bottom-20 left-4 right-4 bg-gray-900 text-white p-3 rounded-xl shadow-2xl z-[9999] border border-gray-700 flex justify-between items-center" dir="rtl">
   <div class="flex items-center gap-3">
     <div class="bg-yellow-500 text-black font-black text-xl rounded-lg w-10 h-10 flex items-center justify-center">M</div>
@@ -49,7 +48,6 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
 
 <main class="max-w-md mx-auto p-4">
 
-<!-- الدخول / التسجيل -->
 <div id="authScreen" class="hide bg-white p-6 rounded-2xl shadow-lg mt-6">
   <div class="flex mb-4 bg-gray-100 rounded-lg p-1">
     <button id="tabLogin" onclick="setAuthMode('login')" class="flex-1 py-2 rounded-lg font-bold">دخول</button>
@@ -68,7 +66,7 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
       <input type="text" id="vehicle" placeholder="نوع العربية (مثال: سوزوكي / ربع نقل / جامبو)" class="inp">
       <input type="text" id="plate" placeholder="رقم اللوحة" class="inp">
     </div>
-    <p class="text-xs text-gray-500 mb-2">بالتسجيل أنت توافق على <a href="terms.html" class="underline text-blue-600">الشروط وسياسة الخصوصية</a> (وبيتم جمع رقم هاتفك وموقعك أثناء الشحنة).</p>
+    <p class="text-xs text-gray-500 mb-2">بالتسجيل أنت توافق على <a href="terms.html" class="underline text-blue-600">الشروط وسياسة الخصوصية</a>.</p>
   </div>
   <button onclick="handleAuth()" id="authBtn" class="w-full bg-yellow-500 font-bold p-3 rounded-lg">دخول</button>
 </div>
@@ -81,11 +79,6 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
 
 <!-- العميل -->
 <div id="clientScreen" class="hide">
-  <div id="walletBox" class="card flex justify-between items-center hide">
-    <div><p class="text-gray-500 text-sm">رصيد المحفظة</p><p class="text-2xl font-bold text-green-600" id="clientWallet">0</p></div>
-    <button onclick="topUpWallet()" class="bg-black text-white px-4 py-2 rounded-lg text-sm">+ شحن</button>
-  </div>
-
   <div class="card">
     <h3 class="font-bold text-lg mb-3">طلب شحنة جديدة</h3>
     
@@ -108,6 +101,10 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
       <option value="أخرى">📦 أخرى</option>
     </select>
 
+    <!-- الوزن ووصف الشحنة -->
+    <input type="text" id="cargoDesc" placeholder="وصف الشحنة (اختياري)" class="inp">
+    <input type="number" id="weight" placeholder="الوزن التقريبي بالطن (اختياري)" class="inp">
+
     <select id="vehicleType" class="inp" onchange="updateEstimate()">
       <option value="light">🚐 نقل خفيف (سوزوكي / ربع نقل)</option>
       <option value="medium">🚚 نقل متوسط (جامبو)</option>
@@ -115,7 +112,6 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
     </select>
     <select id="payment_method" class="inp font-bold text-blue-700">
       <option value="cash">💵 الدفع نقداً للسائق</option>
-      <option value="wallet" id="walletOpt" class="hide">💰 خصم من المحفظة</option>
     </select>
     <div class="flex gap-2">
       <button id="btnPick" onclick="setPickMode('pickup')" class="flex-1 py-2 rounded-lg text-sm font-bold">📍 حدد التحميل</button>
@@ -140,7 +136,6 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
       <p class="text-xs text-gray-400" id="walletHint"></p>
     </div>
     <div class="flex gap-2 flex-col">
-      <button onclick="requestPayout()" class="bg-green-500 px-3 py-1 rounded text-xs font-bold">💸 سحب الأرباح</button>
       <button onclick="enableSound()" id="soundBtn" class="bg-yellow-500 text-black px-3 py-1 rounded text-xs font-bold">🔔 تفعيل الصوت</button>
     </div>
   </div>
@@ -161,8 +156,7 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
     <div class="card border-r-4 border-green-500 !mb-0"><p class="text-xs text-gray-500">مبالغ الطلبات المسلّمة</p><p class="text-xl font-bold" id="statTotalRevenue">0</p></div>
     <div class="card border-r-4 border-red-500 col-span-2 !mb-0"><p class="text-xs text-gray-500">صافي أرباح المنصة (5%)</p><p class="text-xl font-bold" id="statPlatformCommission">0</p></div>
   </div>
-  <div class="card border-r-4 border-green-500"><h3 class="font-bold mb-2">طلبات سحب الأرباح 💸</h3><div id="adminPayoutsList"></div></div>
-  <div class="card border-r-4 border-blue-500"><h3 class="font-bold mb-2">تتبع الشحنات النشطة 📍</h3><div id="adminLiveTracking"></div></div>
+  
   <h3 class="font-bold text-lg mb-2 mt-6">المستخدمين</h3>
   <div id="adminUsersList" class="mb-6"></div>
   <h3 class="font-bold text-lg mb-2">سجل الطلبات</h3>
@@ -170,7 +164,6 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
 </div>
 </main>
 
-<!-- نافذة الإيصال المخصصة -->
 <div id="receiptModal" class="hide fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[9999]" dir="rtl">
   <div class="bg-white p-6 rounded-2xl shadow-2xl text-center max-w-xs w-full mx-4">
     <div class="text-4xl mb-2">📄</div>
@@ -196,20 +189,12 @@ const SUPABASE_URL='https://jzcwocvkqbuhpactazus.supabase.co';
 const SUPABASE_KEY='sb_publishable_ndfcyfS3Mz90d5_E-LQnbg_FW-cyLsJ';
 const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
-// === تفعيل الـ Service Worker للـ PWA (تم تعديل المسار لـ masar) ===
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/masar/sw.js').catch(err => console.log('SW error', err));
   });
 }
-
-function askNotificationPermission() {
-  if ("Notification" in window) {
-    if (Notification.permission !== "granted" && Notification.permission !== "denied") {
-      Notification.requestPermission();
-    }
-  }
-}
+function askNotificationPermission() { if ("Notification" in window) { if (Notification.permission !== "granted" && Notification.permission !== "denied") { Notification.requestPermission(); } } }
 askNotificationPermission();
 
 const WALLET_ENABLED=false;
@@ -267,8 +252,6 @@ async function loadApp(user){
   me=data;
   $('logoutBtn').classList.remove('hide');
   if(me.role==='client'){
-    $('walletBox').classList.toggle('hide',!WALLET_ENABLED);
-    $('walletOpt').classList.toggle('hide',!WALLET_ENABLED);
     showScreen('clientScreen');paintWallet();
     renderClientOrders();setTimeout(initClientMap,200);
     listen(renderClientOrders,'client_id=eq.'+me.id);
@@ -287,24 +270,14 @@ async function refreshMe(){
   const{data}=await db.from('profiles').select('*').eq('id',me.id).maybeSingle();
   if(data){me=data;paintWallet();}
 }
-
 function paintWallet(){
-  if(me.role==='client')$('clientWallet').innerText=money(me.wallet_balance);
   if(me.role==='driver'){
     $('driverWallet').innerText=money(me.wallet_balance);
     $('walletHint').innerText=me.wallet_balance<0?'سالب = عمولة مستحقة للمنصة':'';
   }
 }
-
-function showScreen(id){
-  ['authScreen','clientScreen','driverScreen','adminScreen','approvalScreen'].forEach(s=>$(s).classList.add('hide'));
-  $(id).classList.remove('hide');
-}
-
-async function logout(){
-  stopTracking();clearInterval(pollTimer);
-  await db.auth.signOut();location.reload();
-}
+function showScreen(id){ ['authScreen','clientScreen','driverScreen','adminScreen','approvalScreen'].forEach(s=>$(s).classList.add('hide')); $(id).classList.remove('hide'); }
+async function logout(){ stopTracking();clearInterval(pollTimer); await db.auth.signOut();location.reload(); }
 
 function listen(rerender,filter){
   if(mainChannel)db.removeChannel(mainChannel);
@@ -320,28 +293,7 @@ function listen(rerender,filter){
   }).subscribe();
 }
 
-function cleanupLive(){
-  Object.values(live).forEach(t=>{try{t.map.remove();}catch(e){}});
-  live={};
-}
-
-function makeLive(prefix,o){
-  const el=$(prefix+o.id);if(!el)return;
-  const m=L.map(el).setView([o.pickup_lat,o.pickup_lng],12);
-  L.tileLayer(TILE,{attribution:'© OpenStreetMap'}).addTo(m);
-  L.marker([o.pickup_lat,o.pickup_lng]).addTo(m).bindPopup('التحميل');
-  if(o.dropoff_lat!=null)L.marker([o.dropoff_lat,o.dropoff_lng]).addTo(m).bindPopup('التسليم');
-  const t={map:m,marker:null};live[o.id]=t;setDriverMarker(t,o);
-}
-
-function setDriverMarker(t,o){
-  if(o.driver_lat==null)return;
-  const p=[o.driver_lat,o.driver_lng];
-  if(t.marker)t.marker.setLatLng(p);else t.marker=L.marker(p,{icon:truckIcon}).addTo(t.map).bindPopup('السائق');
-}
-
 let map=null,mk={pickup:null,dropoff:null},pos={pickup:null,dropoff:null},pickMode='pickup';
-
 function initClientMap(){
   if(map){map.remove();map=null;}
   mk={pickup:null,dropoff:null};pos={pickup:null,dropoff:null};
@@ -357,13 +309,11 @@ function initClientMap(){
   });
   setPickMode('pickup');
 }
-
 function setPickMode(m){
   pickMode=m;
   $('btnPick').className='flex-1 py-2 rounded-lg text-sm font-bold '+(m==='pickup'?'bg-yellow-500':'bg-gray-100');
   $('btnDrop').className='flex-1 py-2 rounded-lg text-sm font-bold '+(m==='dropoff'?'bg-yellow-500':'bg-gray-100');
 }
-
 async function updateEstimate(){
   if(!pos.pickup||!pos.dropoff){$('estimate').innerText='اختار نقطة التحميل ثم التسليم على الخريطة';return;}
   try{
@@ -371,10 +321,8 @@ async function updateEstimate(){
     $('estimate').innerText='السعر التقديري: '+money(p);
   }catch(e){$('estimate').innerText='';}
 }
-
 async function searchAddress(type) {
-  const address = $(type).value.trim();
-  if(!address) return alert('اكتب العنوان الأول');
+  const address = $(type).value.trim(); if(!address) return alert('اكتب العنوان الأول');
   try {
     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address + ' مصر')}&limit=1`);
     const data = await res.json();
@@ -388,41 +336,33 @@ async function searchAddress(type) {
   } catch(e) { alert('حصل خطأ في البحث، جرب تاني'); }
 }
 
-async function topUpWallet(){
-  const msg=encodeURIComponent('عايز أشحن محفظتي في مسار. الاسم: '+me.full_name);
-  window.open('https://wa.me/'+WHATSAPP+'?text='+msg,'_blank');
-}
-
 async function createOrder(){
   const pickup=$('pickup').value.trim(),dropoff=$('dropoff').value.trim(),cargo=$('cargoType').value;
+  const weight=$('weight').value ? parseFloat($('weight').value) : 0;
+  const desc=$('cargoDesc').value.trim();
   if(!pickup||!dropoff)return alert('ادخل العناوين');
   if(!pos.pickup||!pos.dropoff)return alert('حدد التحميل والتسليم على الخريطة');
   const btn=$('orderBtn');btn.disabled=true;
   try{
     await rpc('create_order',{p_pickup:pickup,p_dropoff:dropoff,p_plat:pos.pickup[0],p_plng:pos.pickup[1],
       p_dlat:pos.dropoff[0],p_dlng:pos.dropoff[1],p_vehicle:$('vehicleType').value, p_cargo: cargo,
-      p_pay:WALLET_ENABLED?$('payment_method').value:'cash'});
-    alert('تم إرسال الطلب! هتلاقي كود التسليم في شحناتي، أعطيه للسائق وقت التسليم فقط.');
-    $('pickup').value='';$('dropoff').value='';initClientMap();updateEstimate();
+      p_weight: weight, p_desc: desc, p_pay:'cash'});
+    alert('تم إرسال الطلب! هتلاقي كود التسليم في شحناتي.');
+    $('pickup').value='';$('dropoff').value='';$('weight').value='';$('cargoDesc').value='';
+    initClientMap();updateEstimate();
     refreshMe();renderClientOrders();
   }catch(e){alert(e.message);}
   btn.disabled=false;
 }
 
-async function cancelOrder(id){
-  if(!confirm('إلغاء الطلب؟'))return;
-  try{await rpc('cancel_order',{p_id:id});refreshMe();renderClientOrders();}catch(e){alert(e.message);}
-}
-
-async function submitRating(id,stars){
-  try{await rpc('rate_order',{p_id:id,p_stars:stars});alert('شكراً لتقييمك! ⭐');renderClientOrders();}catch(e){alert(e.message);}
-}
+async function cancelOrder(id){ if(!confirm('إلغاء الطلب؟'))return; try{await rpc('cancel_order',{p_id:id});refreshMe();renderClientOrders();}catch(e){alert(e.message);} }
+async function submitRating(id,stars){ try{await rpc('rate_order',{p_id:id,p_stars:stars});alert('شكراً لتقييمك! ⭐');renderClientOrders();}catch(e){alert(e.message);} }
 
 async function renderClientOrders(){
   const{data:orders}=await db.from('orders').select('*').eq('client_id',me.id).order('created_at',{ascending:false});
   const{data:secrets}=await db.from('order_secrets').select('order_id,otp_code');
   const otps={};(secrets||[]).forEach(s=>otps[s.order_id]=s.otp_code);
-  cleanupLive();known={};
+  known={};
   const list=orders||[];
   $('clientOrders').innerHTML=list.map(o=>{
     known[o.id]=o.status;
@@ -431,10 +371,20 @@ async function renderClientOrders(){
       :`<div class="mt-3 bg-yellow-50 p-2 rounded-lg text-center"><p class="text-sm font-bold">قيّم السائق:</p><div class="flex justify-center gap-2" dir="ltr">${[1,2,3,4,5].map(s=>`<span class="star" onclick="submitRating('${esc(o.id)}',${s})">★</span>`).join('')}</div></div>`):'';
     const otp=otps[o.id]?`<div class="mt-2 bg-red-50 border border-red-200 p-2 rounded-lg text-center"><p class="text-sm text-gray-600">كود التسليم (للسائق عند الاستلام فقط):</p><p class="text-xl font-black text-red-600 tracking-widest">${esc(otps[o.id])}</p></div>`:'';
     const cancel=(o.status==='pending'||o.status==='accepted')?`<button onclick="cancelOrder('${esc(o.id)}')" class="mt-2 w-full border border-red-300 text-red-600 py-1 rounded-lg text-sm">إلغاء الطلب</button>`:'';
+    
+    let details = '';
+    if(o.weight > 0) details += `<p class="text-xs text-gray-500 mt-1">الوزن: ${o.weight} طن</p>`;
+    if(o.cargo_description) details += `<p class="text-xs text-gray-500 mt-1">الوصف: ${esc(o.cargo_description)}</p>`;
+    if(o.toll_fees > 0) details += `<p class="text-xs text-blue-600 font-bold mt-1">رسوم طريق/بوابات: ${money(o.toll_fees)}</p>`;
+    
+    let total = o.price + (o.toll_fees || 0);
+    
     return `<div class="card border-r-4 ${o.status==='pending'?'border-yellow-500':o.status==='delivered'?'border-green-500':o.status==='cancelled'?'border-gray-400':'border-blue-500'}">
       <div class="flex justify-between"><span class="font-bold">${esc(o.cargo_type)}</span><span class="text-xs bg-gray-100 px-2 py-1 rounded">${STATUS[o.status]||esc(o.status)}</span></div>
       <p class="text-sm mt-2 text-gray-600">📍 من: ${esc(o.pickup_address)}<br>🏁 إلى: ${esc(o.dropoff_address)}</p>
-      <p class="font-bold mt-2 text-lg">${money(o.price)}</p>
+      ${details}
+      <p class="font-bold mt-2 text-lg">الإجمالي: ${money(total)}</p>
+      <p class="text-xs text-gray-500 mb-2">(سعر الشحنة: ${money(o.price)} + رسوم: ${money(o.toll_fees||0)})</p>
       <p class="text-sm text-blue-700 font-bold mb-2">الدفع: كاش</p>
       ${otp}${rating}${cancel}
     </div>`;
@@ -449,28 +399,42 @@ async function renderDriverOrders(){
   if($('driverMyOrders')){
     $('driverMyOrders').innerHTML=allOrders.map(o=>{
       let actionBtn='';
-      if(o.status==='accepted') actionBtn=`<button onclick="pickupOrder('${o.id}')" class="mt-2 w-full bg-blue-500 text-white py-2 rounded text-sm font-bold shadow">📦 تأكيد الاستلام</button>`;
-      else if(o.status==='picked_up') actionBtn=`<button onclick="deliverOrder('${o.id}')" class="mt-2 w-full bg-green-500 text-white py-2 rounded text-sm font-bold shadow">✅ تسليم الشحنة</button>`;
+      if(o.status==='accepted') actionBtn=`<button onclick="pickupOrder('${o.id}')" class="mt-2 w-full bg-blue-500 text-white py-2 rounded text-sm font-bold shadow mb-2">📦 تأكيد الاستلام</button>
+      <button onclick="addTollFee('${o.id}')" class="w-full bg-gray-700 text-white py-1 rounded text-xs mb-2">➕ إضافة رسوم كارتة/بوابات</button>`;
+      else if(o.status==='picked_up') actionBtn=`<button onclick="deliverOrder('${o.id}')" class="mt-2 w-full bg-green-500 text-white py-2 rounded text-sm font-bold shadow mb-2">✅ تسليم الشحنة</button>
+      <button onclick="addTollFee('${o.id}')" class="w-full bg-gray-700 text-white py-1 rounded text-xs mb-2">➕ إضافة رسوم كارتة/بوابات</button>`;
       else if(o.status==='delivered') actionBtn=`<button onclick="showReceipt('${o.id}')" class="mt-2 w-full bg-gray-800 text-white text-xs py-2 rounded">📄 عرض إيصال التسليم</button>`;
       
+      let details = '';
+      if(o.weight > 0) details += `<p class="text-xs text-gray-500 mt-1">الوزن: ${o.weight} طن</p>`;
+      if(o.cargo_description) details += `<p class="text-xs text-gray-500 mt-1">الوصف: ${esc(o.cargo_description)}</p>`;
+      if(o.toll_fees > 0) details += `<p class="text-xs text-blue-600 font-bold mt-1">رسوم طريق: ${money(o.toll_fees)}</p>`;
+
       return `<div class="card border-r-4 ${o.status==='delivered'?'border-green-500':'border-blue-500'}">
         <div class="flex justify-between"><span class="font-bold">${esc(o.cargo_type)}</span><span class="text-xs bg-gray-100 px-2 py-1 rounded">${STATUS[o.status]||esc(o.status)}</span></div>
         <p class="text-sm mt-2 text-gray-600">📍 من: ${esc(o.pickup_address)}<br>🏁 إلى: ${esc(o.dropoff_address)}</p>
-        <p class="font-bold mt-2">${money(o.price)}</p>
+        ${details}
+        <p class="font-bold mt-2">سعر الشحنة: ${money(o.price)} + (بوابات: ${money(o.toll_fees||0)})</p>
         ${actionBtn}
       </div>`;
     }).join('') || '<p class="text-sm text-gray-500">لا توجد رحلات حالية</p>';
   }
 
   if($('driverPendingOrders')){
-    $('driverPendingOrders').innerHTML=(pend||[]).map(o=>`
+    $('driverPendingOrders').innerHTML=(pend||[]).map(o=>{
+      let details = '';
+      if(o.weight > 0) details += `<p class="text-xs text-gray-500 mt-1">الوزن: ${o.weight} طن</p>`;
+      if(o.cargo_description) details += `<p class="text-xs text-gray-500 mt-1">الوصف: ${esc(o.cargo_description)}</p>`;
+
+      return `
       <div class="card border-r-4 border-yellow-500">
         <div class="flex justify-between"><span class="font-bold">${esc(o.cargo_type)}</span><span class="text-xs bg-gray-100 px-2 py-1 rounded">انتظار</span></div>
         <p class="text-sm mt-2 text-gray-600">📍 من: ${esc(o.pickup_address)}<br>🏁 إلى: ${esc(o.dropoff_address)}</p>
+        ${details}
         <p class="font-bold mt-2">${money(o.price)}</p>
         <button onclick="acceptOrder('${o.id}')" class="mt-2 w-full bg-yellow-500 font-bold py-2 rounded text-sm shadow">قبول الطلب</button>
       </div>
-    `).join('') || '<p class="text-sm text-gray-500">لا توجد طلبات متاحة</p>';
+    `}).join('') || '<p class="text-sm text-gray-500">لا توجد طلبات متاحة</p>';
   }
 }
 
@@ -495,20 +459,24 @@ async function deliverOrder(id){
   catch(e){ alert('كود خاطئ أو حدث خطأ: ' + e.message); }
 }
 
+async function addTollFee(orderId) {
+  const amount = prompt('أدخل رسوم البوابات/الكارتة التي دفعتها (بالجنيه):');
+  if (amount === null || amount === '' || isNaN(amount)) return;
+  try {
+    await rpc('add_toll_fees', { p_order_id: orderId, p_amount: parseFloat(amount) });
+    alert('تم إضافة الرسوم بنجاح، وسيتم إضافتها لإجمالي فاتورة العميل.');
+    renderDriverOrders();
+  } catch(e) {
+    alert('خطأ: ' + e.message);
+  }
+}
+
 async function showReceipt(orderId){
   try{
     const otp=await rpc('get_order_otp',{p_order_id:orderId});
     document.getElementById('receiptOtp').innerText = otp;
     document.getElementById('receiptModal').classList.remove('hide');
   }catch(e){alert('خطأ: '+e.message);}
-}
-
-async function requestPayout(){
-  if(me.wallet_balance<=0) return alert('رصيدك غير كافٍ للسحب. رصيدك الحالي: '+money(me.wallet_balance));
-  const a=prompt('أدخل المبلغ اللي عايز تسحبه:');
-  if(!a) return;
-  try{ await rpc('request_payout',{p_amount:Number(a)}); alert('تم إرسال طلب السحب للإدارة'); refreshMe(); }
-  catch(e){ alert(e.message); }
 }
 
 function enableSound(){ sound=true; $('soundBtn').innerText='🔊 الصوت شغال'; }
@@ -519,19 +487,31 @@ async function loadAdminData(){
   const{data:users}=await db.from('profiles').select('*');
   
   if($('adminOrdersList')){
-    $('adminOrdersList').innerHTML=(os||[]).map(o=>`
+    $('adminOrdersList').innerHTML=(os||[]).map(o=>{
+      let details = '';
+      if(o.weight > 0) details += `<p class="text-xs text-gray-500">الوزن: ${o.weight} طن</p>`;
+      if(o.cargo_description) details += `<p class="text-xs text-gray-500">وصف: ${esc(o.cargo_description)}</p>`;
+      if(o.toll_fees > 0) details += `<p class="text-xs text-blue-600 font-bold">بوابات: ${money(o.toll_fees)}</p>`;
+
+      return `
       <div class="card border-r-4 border-gray-300 mb-2">
-        <div class="flex justify-between font-bold"><span>${esc(o.cargo_type)}</span><span>${money(o.price)}</span></div>
+        <div class="flex justify-between font-bold"><span>${esc(o.cargo_type)}</span><span>${money(o.price + (o.toll_fees||0))}</span></div>
+        ${details}
         <p class="text-xs text-gray-500">الحالة: ${STATUS[o.status]||esc(o.status)}</p>
         ${o.status==='delivered'?`<button onclick="showReceipt('${o.id}')" class="text-xs text-blue-600 underline mt-2 block">📄 عرض إيصال التسليم</button>`:''}
       </div>
-    `).join('');
+      `;
+    }).join('');
   }
   
   if($('adminUsersList')){
     $('adminUsersList').innerHTML=(users||[]).map(u=>`
       <div class="card flex justify-between items-center mb-2">
-        <div><p class="font-bold text-sm">${esc(u.full_name)} (${u.role})</p><p class="text-xs text-gray-500">${esc(u.phone)} — رصيد: ${money(u.wallet_balance)}</p></div>
+        <div>
+          <p class="font-bold text-sm">${esc(u.full_name)} (${u.role})</p>
+          <p class="text-xs text-gray-500">${esc(u.phone)} — رصيد: ${money(u.wallet_balance)}</p>
+          ${u.role === 'driver' ? `<p class="text-xs text-blue-700 font-bold mt-1">🚚 العربية: ${esc(u.vehicle_type) || 'غير مسجل'} | لوحة: ${esc(u.plate_number) || 'غير مسجل'}</p>` : ''}
+        </div>
         ${u.role==='driver'&&!u.approved?`<button onclick="approveDriver('${u.id}')" class="bg-green-500 text-white text-xs px-2 py-1 rounded">✅ موافقة</button>`:''}
         <button onclick="adjustWallet('${u.id}')" class="bg-gray-200 text-xs px-2 py-1 rounded">تعديل الرصيد</button>
       </div>
@@ -543,22 +523,10 @@ async function approveDriver(id){ try{ await rpc('approve_driver',{p_id:id}); al
 async function adjustWallet(id){ const a=prompt('أدخل المبلغ (موجب للإضافة، سالب للخصم):'); if(!a)return; try{ await rpc('admin_adjust_wallet',{p_id:id,p_amount:Number(a)}); loadAdminData(); }catch(e){alert(e.message);} }
 
 let deferredPrompt;
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault(); deferredPrompt = e;
-  const banner=document.getElementById('installBanner'); if(banner) banner.classList.remove('hide');
-});
-function installApp() {
-  if (deferredPrompt) {
-    deferredPrompt.prompt();
-    deferredPrompt.userChoice.then(() => { deferredPrompt=null; document.getElementById('installBanner').classList.add('hide'); });
-  } else { alert('لتثبيت التطبيق على الآيفون:\n1. اضغط على زر المشاركة.\n2. اختار "إضافة إلى الشاشة الرئيسية".'); }
-}
-const isIos=()=>/iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
-const isInStandaloneMode=()=>('standalone' in window.navigator)&&(window.navigator.standalone);
-if (isIos() && !isInStandaloneMode()) {
-  const banner=document.getElementById('installBanner');
-  if(banner){ banner.classList.remove('hide'); document.getElementById('installDesc').innerText='اضغط مشاركة ثم "إضافة للشاشة"'; document.getElementById('btnInstall').innerText='طريقة التثبيت'; }
-}
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; const banner=document.getElementById('installBanner'); if(banner) banner.classList.remove('hide'); });
+function installApp() { if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => { deferredPrompt=null; document.getElementById('installBanner').classList.add('hide'); }); } else { alert('لتثبيت التطبيق على الآيفون:\n1. اضغط على زر المشاركة.\n2. اختار "إضافة إلى الشاشة الرئيسية".'); } }
+const isIos=()=>/iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()); const isInStandaloneMode=()=>('standalone' in window.navigator)&&(window.navigator.standalone);
+if (isIos() && !isInStandaloneMode()) { const banner=document.getElementById('installBanner'); if(banner){ banner.classList.remove('hide'); document.getElementById('installDesc').innerText='اضغط مشاركة ثم "إضافة للشاشة"'; document.getElementById('btnInstall').innerText='طريقة التثبيت'; } }
 window.addEventListener('appinstalled', () => { document.getElementById('installBanner').classList.add('hide'); });
 
 setAuthMode('login');
