@@ -63,8 +63,8 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
     <input type="text" id="name" placeholder="الاسم بالكامل" class="inp">
     <input type="text" id="phone" placeholder="رقم الهاتف" class="inp" dir="ltr">
     <div id="driverFields" class="hide">
-      <input type="text" id="vehicle" placeholder="نوع العربية (مثال: سوزوكي / ربع نقل / جامبو)" class="inp">
-      <input type="text" id="plate" placeholder="رقم اللوحة" class="inp">
+      <input type="text" id="vehicle" placeholder="نوع العربية (سوزوكي / ربع نقل / جامبو)" class="inp">
+      <input type="text" id="plate" placeholder="رقم اللوحة (مطلوب إجبارياً)" class="inp">
     </div>
     <p class="text-xs text-gray-500 mb-2">بالتسجيل أنت توافق على <a href="terms.html" class="underline text-blue-600">الشروط وسياسة الخصوصية</a>.</p>
   </div>
@@ -81,7 +81,6 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
 <div id="clientScreen" class="hide">
   <div class="card">
     <h3 class="font-bold text-lg mb-3">طلب شحنة جديدة</h3>
-    
     <div class="flex gap-2 mb-2">
       <input type="text" id="pickup" placeholder="عنوان التحميل" class="inp !mb-0" maxlength="200">
       <button onclick="searchAddress('pickup')" class="bg-gray-200 px-3 rounded-lg font-bold">🔍</button>
@@ -90,7 +89,6 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
       <input type="text" id="dropoff" placeholder="عنوان التسليم" class="inp !mb-0" maxlength="200">
       <button onclick="searchAddress('dropoff')" class="bg-gray-200 px-3 rounded-lg font-bold">🔍</button>
     </div>
-
     <select id="cargoType" class="inp font-bold">
       <option value="أثاث">🛋️ أثاث (منزل / مكتب)</option>
       <option value="أجهزة كهربائية">📺 أجهزة كهربائية وإلكترونيات</option>
@@ -100,18 +98,12 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
       <option value="مواد بناء">🧱 مواد بناء / أسمنت</option>
       <option value="أخرى">📦 أخرى</option>
     </select>
-
-    <!-- الوزن ووصف الشحنة -->
     <input type="text" id="cargoDesc" placeholder="وصف الشحنة (اختياري)" class="inp">
     <input type="number" id="weight" placeholder="الوزن التقريبي بالطن (اختياري)" class="inp">
-
     <select id="vehicleType" class="inp" onchange="updateEstimate()">
       <option value="light">🚐 نقل خفيف (سوزوكي / ربع نقل)</option>
       <option value="medium">🚚 نقل متوسط (جامبو)</option>
       <option value="heavy">🚛 نقل ثقيل (تريلا / نقل ثقيل)</option>
-    </select>
-    <select id="payment_method" class="inp font-bold text-blue-700">
-      <option value="cash">💵 الدفع نقداً للسائق</option>
     </select>
     <div class="flex gap-2">
       <button id="btnPick" onclick="setPickMode('pickup')" class="flex-1 py-2 rounded-lg text-sm font-bold">📍 حدد التحميل</button>
@@ -121,7 +113,6 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
     <p class="text-sm font-bold text-center text-green-700 mb-2" id="estimate">اختار نقطة التحميل ثم التسليم على الخريطة</p>
     <button onclick="createOrder()" id="orderBtn" class="w-full bg-yellow-500 font-bold p-3 rounded-lg">تأكيد الطلب</button>
   </div>
-
   <h3 class="font-bold text-lg mb-2 mt-6">شحناتي</h3>
   <div id="clientOrders"></div>
 </div>
@@ -156,7 +147,6 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
     <div class="card border-r-4 border-green-500 !mb-0"><p class="text-xs text-gray-500">مبالغ الطلبات المسلّمة</p><p class="text-xl font-bold" id="statTotalRevenue">0</p></div>
     <div class="card border-r-4 border-red-500 col-span-2 !mb-0"><p class="text-xs text-gray-500">صافي أرباح المنصة (5%)</p><p class="text-xl font-bold" id="statPlatformCommission">0</p></div>
   </div>
-  
   <h3 class="font-bold text-lg mb-2 mt-6">المستخدمين</h3>
   <div id="adminUsersList" class="mb-6"></div>
   <h3 class="font-bold text-lg mb-2">سجل الطلبات</h3>
@@ -190,9 +180,7 @@ const SUPABASE_KEY='sb_publishable_ndfcyfS3Mz90d5_E-LQnbg_FW-cyLsJ';
 const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/masar/sw.js').catch(err => console.log('SW error', err));
-  });
+  window.addEventListener('load', () => { navigator.serviceWorker.register('/masar/sw.js').catch(err => console.log('SW error', err)); });
 }
 function askNotificationPermission() { if ("Notification" in window) { if (Notification.permission !== "granted" && Notification.permission !== "denied") { Notification.requestPermission(); } } }
 askNotificationPermission();
@@ -232,10 +220,17 @@ async function handleAuth(){
     }else{
       const full_name=$('name').value.trim(),phone=$('phone').value.trim(),role=$('role').value;
       const vehicle_type=$('vehicle').value.trim(),plate_number=$('plate').value.trim();
+      
       if(password.length<8)throw new Error('كلمة المرور لازم 8 أحرف على الأقل');
       if(full_name.length<3)throw new Error('اكتب الاسم بالكامل');
       if(!/^[0-9+]{8,15}$/.test(phone))throw new Error('رقم الهاتف غير صحيح');
-      if(role==='driver'&&(!vehicle_type||!plate_number))throw new Error('اكتب نوع العربية ورقم اللوحة');
+      
+      // شروط صارمة للسائق عشان نمنع أي حد يسجل من غير بيانات صح
+      if(role==='driver'){
+        if(!vehicle_type || vehicle_type.length < 3) throw new Error('اكتب نوع العربية بشكل صحيح (مثال: سوزوكي، جامبو)');
+        if(!plate_number || plate_number.length < 3 || plate_number.includes('لا يوجد')) throw new Error('رقم اللوحة إجباري ومهم جداً، متكتبش "لا يوجد"');
+      }
+      
       const{data,error}=await db.auth.signUp({email,password,options:{data:{full_name,phone,role,vehicle_type,plate_number}}});
       if(error)throw error;
       if(data.session)await loadApp(data.user);
@@ -266,16 +261,8 @@ async function loadApp(user){
   }
 }
 
-async function refreshMe(){
-  const{data}=await db.from('profiles').select('*').eq('id',me.id).maybeSingle();
-  if(data){me=data;paintWallet();}
-}
-function paintWallet(){
-  if(me.role==='driver'){
-    $('driverWallet').innerText=money(me.wallet_balance);
-    $('walletHint').innerText=me.wallet_balance<0?'سالب = عمولة مستحقة للمنصة':'';
-  }
-}
+async function refreshMe(){ const{data}=await db.from('profiles').select('*').eq('id',me.id).maybeSingle(); if(data){me=data;paintWallet();} }
+function paintWallet(){ if(me.role==='driver'){ $('driverWallet').innerText=money(me.wallet_balance); $('walletHint').innerText=me.wallet_balance<0?'سالب = عمولة مستحقة للمنصة':''; } }
 function showScreen(id){ ['authScreen','clientScreen','driverScreen','adminScreen','approvalScreen'].forEach(s=>$(s).classList.add('hide')); $(id).classList.remove('hide'); }
 async function logout(){ stopTracking();clearInterval(pollTimer); await db.auth.signOut();location.reload(); }
 
@@ -286,9 +273,7 @@ function listen(rerender,filter){
     const o=p.new;if(!o||!o.id)return;
     if(known[o.id]!==o.status){
       clearTimeout(debounce);debounce=setTimeout(rerender,400);
-      if (Notification.permission === "granted") {
-        new Notification("مسار - تحديث جديد", { body: "هناك تحديث في الطلبات، افتح التطبيق للتفاصيل.", icon: "https://cdn-icons-png.flaticon.com/512/7104/7104020.png" });
-      }
+      if (Notification.permission === "granted") { new Notification("مسار - تحديث جديد", { body: "هناك تحديث في الطلبات، افتح التطبيق للتفاصيل.", icon: "https://cdn-icons-png.flaticon.com/512/7104/7104020.png" }); }
     }else if(live[o.id])setDriverMarker(live[o.id],o);
   }).subscribe();
 }
@@ -309,17 +294,10 @@ function initClientMap(){
   });
   setPickMode('pickup');
 }
-function setPickMode(m){
-  pickMode=m;
-  $('btnPick').className='flex-1 py-2 rounded-lg text-sm font-bold '+(m==='pickup'?'bg-yellow-500':'bg-gray-100');
-  $('btnDrop').className='flex-1 py-2 rounded-lg text-sm font-bold '+(m==='dropoff'?'bg-yellow-500':'bg-gray-100');
-}
+function setPickMode(m){ pickMode=m; $('btnPick').className='flex-1 py-2 rounded-lg text-sm font-bold '+(m==='pickup'?'bg-yellow-500':'bg-gray-100'); $('btnDrop').className='flex-1 py-2 rounded-lg text-sm font-bold '+(m==='dropoff'?'bg-yellow-500':'bg-gray-100'); }
 async function updateEstimate(){
   if(!pos.pickup||!pos.dropoff){$('estimate').innerText='اختار نقطة التحميل ثم التسليم على الخريطة';return;}
-  try{
-    const p=await rpc('estimate_price',{a1:pos.pickup[0],o1:pos.pickup[1],a2:pos.dropoff[0],o2:pos.dropoff[1],v:$('vehicleType').value});
-    $('estimate').innerText='السعر التقديري: '+money(p);
-  }catch(e){$('estimate').innerText='';}
+  try{ const p=await rpc('estimate_price',{a1:pos.pickup[0],o1:pos.pickup[1],a2:pos.dropoff[0],o2:pos.dropoff[1],v:$('vehicleType').value}); $('estimate').innerText='السعر التقديري: '+money(p); }catch(e){$('estimate').innerText='';}
 }
 async function searchAddress(type) {
   const address = $(type).value.trim(); if(!address) return alert('اكتب العنوان الأول');
@@ -349,8 +327,7 @@ async function createOrder(){
       p_weight: weight, p_desc: desc, p_pay:'cash'});
     alert('تم إرسال الطلب! هتلاقي كود التسليم في شحناتي.');
     $('pickup').value='';$('dropoff').value='';$('weight').value='';$('cargoDesc').value='';
-    initClientMap();updateEstimate();
-    refreshMe();renderClientOrders();
+    initClientMap();updateEstimate(); refreshMe();renderClientOrders();
   }catch(e){alert(e.message);}
   btn.disabled=false;
 }
@@ -362,29 +339,18 @@ async function renderClientOrders(){
   const{data:orders}=await db.from('orders').select('*').eq('client_id',me.id).order('created_at',{ascending:false});
   const{data:secrets}=await db.from('order_secrets').select('order_id,otp_code');
   const otps={};(secrets||[]).forEach(s=>otps[s.order_id]=s.otp_code);
-  known={};
-  const list=orders||[];
+  known={}; const list=orders||[];
   $('clientOrders').innerHTML=list.map(o=>{
     known[o.id]=o.status;
-    const rating=o.status==='delivered'?(o.rating
-      ?`<p class="text-sm text-yellow-600 font-bold mt-2">تقييمك: ${'★'.repeat(o.rating)}</p>`
-      :`<div class="mt-3 bg-yellow-50 p-2 rounded-lg text-center"><p class="text-sm font-bold">قيّم السائق:</p><div class="flex justify-center gap-2" dir="ltr">${[1,2,3,4,5].map(s=>`<span class="star" onclick="submitRating('${esc(o.id)}',${s})">★</span>`).join('')}</div></div>`):'';
+    const rating=o.status==='delivered'?(o.rating ?`<p class="text-sm text-yellow-600 font-bold mt-2">تقييمك: ${'★'.repeat(o.rating)}</p>`:`<div class="mt-3 bg-yellow-50 p-2 rounded-lg text-center"><p class="text-sm font-bold">قيّم السائق:</p><div class="flex justify-center gap-2" dir="ltr">${[1,2,3,4,5].map(s=>`<span class="star" onclick="submitRating('${esc(o.id)}',${s})">★</span>`).join('')}</div></div>`):'';
     const otp=otps[o.id]?`<div class="mt-2 bg-red-50 border border-red-200 p-2 rounded-lg text-center"><p class="text-sm text-gray-600">كود التسليم (للسائق عند الاستلام فقط):</p><p class="text-xl font-black text-red-600 tracking-widest">${esc(otps[o.id])}</p></div>`:'';
     const cancel=(o.status==='pending'||o.status==='accepted')?`<button onclick="cancelOrder('${esc(o.id)}')" class="mt-2 w-full border border-red-300 text-red-600 py-1 rounded-lg text-sm">إلغاء الطلب</button>`:'';
-    
-    let details = '';
-    if(o.weight > 0) details += `<p class="text-xs text-gray-500 mt-1">الوزن: ${o.weight} طن</p>`;
-    if(o.cargo_description) details += `<p class="text-xs text-gray-500 mt-1">الوصف: ${esc(o.cargo_description)}</p>`;
-    if(o.toll_fees > 0) details += `<p class="text-xs text-blue-600 font-bold mt-1">رسوم طريق/بوابات: ${money(o.toll_fees)}</p>`;
-    
+    let details = ''; if(o.weight > 0) details += `<p class="text-xs text-gray-500 mt-1">الوزن: ${o.weight} طن</p>`; if(o.cargo_description) details += `<p class="text-xs text-gray-500 mt-1">الوصف: ${esc(o.cargo_description)}</p>`; if(o.toll_fees > 0) details += `<p class="text-xs text-blue-600 font-bold mt-1">رسوم طريق/بوابات: ${money(o.toll_fees)}</p>`;
     let total = o.price + (o.toll_fees || 0);
-    
     return `<div class="card border-r-4 ${o.status==='pending'?'border-yellow-500':o.status==='delivered'?'border-green-500':o.status==='cancelled'?'border-gray-400':'border-blue-500'}">
       <div class="flex justify-between"><span class="font-bold">${esc(o.cargo_type)}</span><span class="text-xs bg-gray-100 px-2 py-1 rounded">${STATUS[o.status]||esc(o.status)}</span></div>
       <p class="text-sm mt-2 text-gray-600">📍 من: ${esc(o.pickup_address)}<br>🏁 إلى: ${esc(o.dropoff_address)}</p>
-      ${details}
-      <p class="font-bold mt-2 text-lg">الإجمالي: ${money(total)}</p>
-      <p class="text-xs text-gray-500 mb-2">(سعر الشحنة: ${money(o.price)} + رسوم: ${money(o.toll_fees||0)})</p>
+      ${details} <p class="font-bold mt-2 text-lg">الإجمالي: ${money(total)}</p> <p class="text-xs text-gray-500 mb-2">(سعر الشحنة: ${money(o.price)} + رسوم: ${money(o.toll_fees||0)})</p>
       <p class="text-sm text-blue-700 font-bold mb-2">الدفع: كاش</p>
       ${otp}${rating}${cancel}
     </div>`;
@@ -395,90 +361,40 @@ async function renderDriverOrders(){
   const{data:myOrders}=await db.from('orders').select('*').eq('driver_id',me.id).order('created_at',{ascending:false});
   const{data:pend}=await db.from('orders').select('*').eq('status','pending').is('driver_id',null);
   const allOrders=myOrders||[];
-  
   if($('driverMyOrders')){
     $('driverMyOrders').innerHTML=allOrders.map(o=>{
       let actionBtn='';
-      if(o.status==='accepted') actionBtn=`<button onclick="pickupOrder('${o.id}')" class="mt-2 w-full bg-blue-500 text-white py-2 rounded text-sm font-bold shadow mb-2">📦 تأكيد الاستلام</button>
-      <button onclick="addTollFee('${o.id}')" class="w-full bg-gray-700 text-white py-1 rounded text-xs mb-2">➕ إضافة رسوم كارتة/بوابات</button>`;
-      else if(o.status==='picked_up') actionBtn=`<button onclick="deliverOrder('${o.id}')" class="mt-2 w-full bg-green-500 text-white py-2 rounded text-sm font-bold shadow mb-2">✅ تسليم الشحنة</button>
-      <button onclick="addTollFee('${o.id}')" class="w-full bg-gray-700 text-white py-1 rounded text-xs mb-2">➕ إضافة رسوم كارتة/بوابات</button>`;
+      if(o.status==='accepted') actionBtn=`<button onclick="pickupOrder('${o.id}')" class="mt-2 w-full bg-blue-500 text-white py-2 rounded text-sm font-bold shadow mb-2">📦 تأكيد الاستلام</button><button onclick="addTollFee('${o.id}')" class="w-full bg-gray-700 text-white py-1 rounded text-xs mb-2">➕ إضافة رسوم كارتة/بوابات</button>`;
+      else if(o.status==='picked_up') actionBtn=`<button onclick="deliverOrder('${o.id}')" class="mt-2 w-full bg-green-500 text-white py-2 rounded text-sm font-bold shadow mb-2">✅ تسليم الشحنة</button><button onclick="addTollFee('${o.id}')" class="w-full bg-gray-700 text-white py-1 rounded text-xs mb-2">➕ إضافة رسوم كارتة/بوابات</button>`;
       else if(o.status==='delivered') actionBtn=`<button onclick="showReceipt('${o.id}')" class="mt-2 w-full bg-gray-800 text-white text-xs py-2 rounded">📄 عرض إيصال التسليم</button>`;
-      
-      let details = '';
-      if(o.weight > 0) details += `<p class="text-xs text-gray-500 mt-1">الوزن: ${o.weight} طن</p>`;
-      if(o.cargo_description) details += `<p class="text-xs text-gray-500 mt-1">الوصف: ${esc(o.cargo_description)}</p>`;
-      if(o.toll_fees > 0) details += `<p class="text-xs text-blue-600 font-bold mt-1">رسوم طريق: ${money(o.toll_fees)}</p>`;
-
+      let details = ''; if(o.weight > 0) details += `<p class="text-xs text-gray-500 mt-1">الوزن: ${o.weight} طن</p>`; if(o.cargo_description) details += `<p class="text-xs text-gray-500 mt-1">الوصف: ${esc(o.cargo_description)}</p>`; if(o.toll_fees > 0) details += `<p class="text-xs text-blue-600 font-bold mt-1">رسوم طريق: ${money(o.toll_fees)}</p>`;
       return `<div class="card border-r-4 ${o.status==='delivered'?'border-green-500':'border-blue-500'}">
         <div class="flex justify-between"><span class="font-bold">${esc(o.cargo_type)}</span><span class="text-xs bg-gray-100 px-2 py-1 rounded">${STATUS[o.status]||esc(o.status)}</span></div>
         <p class="text-sm mt-2 text-gray-600">📍 من: ${esc(o.pickup_address)}<br>🏁 إلى: ${esc(o.dropoff_address)}</p>
-        ${details}
-        <p class="font-bold mt-2">سعر الشحنة: ${money(o.price)} + (بوابات: ${money(o.toll_fees||0)})</p>
+        ${details} <p class="font-bold mt-2">سعر الشحنة: ${money(o.price)} + (بوابات: ${money(o.toll_fees||0)})</p>
         ${actionBtn}
       </div>`;
     }).join('') || '<p class="text-sm text-gray-500">لا توجد رحلات حالية</p>';
   }
-
   if($('driverPendingOrders')){
     $('driverPendingOrders').innerHTML=(pend||[]).map(o=>{
-      let details = '';
-      if(o.weight > 0) details += `<p class="text-xs text-gray-500 mt-1">الوزن: ${o.weight} طن</p>`;
-      if(o.cargo_description) details += `<p class="text-xs text-gray-500 mt-1">الوصف: ${esc(o.cargo_description)}</p>`;
-
+      let details = ''; if(o.weight > 0) details += `<p class="text-xs text-gray-500 mt-1">الوزن: ${o.weight} طن</p>`; if(o.cargo_description) details += `<p class="text-xs text-gray-500 mt-1">الوصف: ${esc(o.cargo_description)}</p>`;
       return `
       <div class="card border-r-4 border-yellow-500">
         <div class="flex justify-between"><span class="font-bold">${esc(o.cargo_type)}</span><span class="text-xs bg-gray-100 px-2 py-1 rounded">انتظار</span></div>
         <p class="text-sm mt-2 text-gray-600">📍 من: ${esc(o.pickup_address)}<br>🏁 إلى: ${esc(o.dropoff_address)}</p>
-        ${details}
-        <p class="font-bold mt-2">${money(o.price)}</p>
+        ${details} <p class="font-bold mt-2">${money(o.price)}</p>
         <button onclick="acceptOrder('${o.id}')" class="mt-2 w-full bg-yellow-500 font-bold py-2 rounded text-sm shadow">قبول الطلب</button>
       </div>
     `}).join('') || '<p class="text-sm text-gray-500">لا توجد طلبات متاحة</p>';
   }
 }
 
-async function acceptOrder(id){
-  try{
-    const res = await rpc('accept_order',{p_id:id});
-    if(res){alert('تم قبول الطلب!');renderDriverOrders();}
-    else alert('عذراً، تم قبول الطلب بواسطة سائق آخر.');
-  }catch(e){alert(e.message);}
-}
-
-async function pickupOrder(id){
-  if(!confirm('هل قمت باستلام الشحنة من العميل؟')) return;
-  try{ await rpc('pickup_order', { p_order_id: id }); alert('تم تأكيد الاستلام!'); renderDriverOrders(); }
-  catch(e){ alert('خطأ: ' + e.message); }
-}
-
-async function deliverOrder(id){
-  const otp = prompt('أدخل كود التسليم من العميل:');
-  if(!otp) return;
-  try{ await rpc('verify_delivery', { p_order_id: id, p_otp: otp }); alert('✅ تم التسليم بنجاح!'); renderDriverOrders(); refreshMe(); }
-  catch(e){ alert('كود خاطئ أو حدث خطأ: ' + e.message); }
-}
-
-async function addTollFee(orderId) {
-  const amount = prompt('أدخل رسوم البوابات/الكارتة التي دفعتها (بالجنيه):');
-  if (amount === null || amount === '' || isNaN(amount)) return;
-  try {
-    await rpc('add_toll_fees', { p_order_id: orderId, p_amount: parseFloat(amount) });
-    alert('تم إضافة الرسوم بنجاح، وسيتم إضافتها لإجمالي فاتورة العميل.');
-    renderDriverOrders();
-  } catch(e) {
-    alert('خطأ: ' + e.message);
-  }
-}
-
-async function showReceipt(orderId){
-  try{
-    const otp=await rpc('get_order_otp',{p_order_id:orderId});
-    document.getElementById('receiptOtp').innerText = otp;
-    document.getElementById('receiptModal').classList.remove('hide');
-  }catch(e){alert('خطأ: '+e.message);}
-}
-
+async function acceptOrder(id){ try{ const res = await rpc('accept_order',{p_id:id}); if(res){alert('تم قبول الطلب!');renderDriverOrders();} else alert('عذراً، تم قبول الطلب بواسطة سائق آخر.'); }catch(e){alert(e.message);} }
+async function pickupOrder(id){ if(!confirm('هل قمت باستلام الشحنة من العميل؟')) return; try{ await rpc('pickup_order', { p_order_id: id }); alert('تم تأكيد الاستلام!'); renderDriverOrders(); } catch(e){ alert('خطأ: ' + e.message); } }
+async function deliverOrder(id){ const otp = prompt('أدخل كود التسليم من العميل:'); if(!otp) return; try{ await rpc('verify_delivery', { p_order_id: id, p_otp: otp }); alert('✅ تم التسليم بنجاح!'); renderDriverOrders(); refreshMe(); } catch(e){ alert('كود خاطئ أو حدث خطأ: ' + e.message); } }
+async function addTollFee(orderId) { const amount = prompt('أدخل رسوم البوابات/الكارتة التي دفعتها (بالجنيه):'); if (amount === null || amount === '' || isNaN(amount)) return; try { await rpc('add_toll_fees', { p_order_id: orderId, p_amount: parseFloat(amount) }); alert('تم إضافة الرسوم بنجاح.'); renderDriverOrders(); } catch(e) { alert('خطأ: ' + e.message); } }
+async function showReceipt(orderId){ try{ const otp=await rpc('get_order_otp',{p_order_id:orderId}); document.getElementById('receiptOtp').innerText = otp; document.getElementById('receiptModal').classList.remove('hide'); }catch(e){alert('خطأ: '+e.message);} }
 function enableSound(){ sound=true; $('soundBtn').innerText='🔊 الصوت شغال'; }
 function stopTracking(){}
 
@@ -488,19 +404,13 @@ async function loadAdminData(){
   
   if($('adminOrdersList')){
     $('adminOrdersList').innerHTML=(os||[]).map(o=>{
-      let details = '';
-      if(o.weight > 0) details += `<p class="text-xs text-gray-500">الوزن: ${o.weight} طن</p>`;
-      if(o.cargo_description) details += `<p class="text-xs text-gray-500">وصف: ${esc(o.cargo_description)}</p>`;
-      if(o.toll_fees > 0) details += `<p class="text-xs text-blue-600 font-bold">بوابات: ${money(o.toll_fees)}</p>`;
-
+      let details = ''; if(o.weight > 0) details += `<p class="text-xs text-gray-500">الوزن: ${o.weight} طن</p>`; if(o.cargo_description) details += `<p class="text-xs text-gray-500">وصف: ${esc(o.cargo_description)}</p>`; if(o.toll_fees > 0) details += `<p class="text-xs text-blue-600 font-bold">بوابات: ${money(o.toll_fees)}</p>`;
       return `
       <div class="card border-r-4 border-gray-300 mb-2">
         <div class="flex justify-between font-bold"><span>${esc(o.cargo_type)}</span><span>${money(o.price + (o.toll_fees||0))}</span></div>
-        ${details}
-        <p class="text-xs text-gray-500">الحالة: ${STATUS[o.status]||esc(o.status)}</p>
+        ${details} <p class="text-xs text-gray-500">الحالة: ${STATUS[o.status]||esc(o.status)}</p>
         ${o.status==='delivered'?`<button onclick="showReceipt('${o.id}')" class="text-xs text-blue-600 underline mt-2 block">📄 عرض إيصال التسليم</button>`:''}
-      </div>
-      `;
+      </div>`;
     }).join('');
   }
   
@@ -512,8 +422,11 @@ async function loadAdminData(){
           <p class="text-xs text-gray-500">${esc(u.phone)} — رصيد: ${money(u.wallet_balance)}</p>
           ${u.role === 'driver' ? `<p class="text-xs text-blue-700 font-bold mt-1">🚚 العربية: ${esc(u.vehicle_type) || 'غير مسجل'} | لوحة: ${esc(u.plate_number) || 'غير مسجل'}</p>` : ''}
         </div>
-        ${u.role==='driver'&&!u.approved?`<button onclick="approveDriver('${u.id}')" class="bg-green-500 text-white text-xs px-2 py-1 rounded">✅ موافقة</button>`:''}
-        <button onclick="adjustWallet('${u.id}')" class="bg-gray-200 text-xs px-2 py-1 rounded">تعديل الرصيد</button>
+        <div class="flex flex-col gap-1">
+          ${u.role==='driver'&&!u.approved?`<button onclick="approveDriver('${u.id}')" class="bg-green-500 text-white text-xs px-2 py-1 rounded">✅ موافقة</button>`:''}
+          <button onclick="adjustWallet('${u.id}')" class="bg-gray-200 text-xs px-2 py-1 rounded">تعديل الرصيد</button>
+          ${u.role !== 'admin' ? `<button onclick="deleteUserAccount('${u.id}', '${esc(u.full_name)}')" class="bg-red-600 text-white text-xs px-2 py-1 rounded mt-1">❌ حذف</button>` : ''}
+        </div>
       </div>
     `).join('');
   }
@@ -521,6 +434,18 @@ async function loadAdminData(){
 
 async function approveDriver(id){ try{ await rpc('approve_driver',{p_id:id}); alert('تم تفعيل السائق'); loadAdminData(); }catch(e){alert(e.message);} }
 async function adjustWallet(id){ const a=prompt('أدخل المبلغ (موجب للإضافة، سالب للخصم):'); if(!a)return; try{ await rpc('admin_adjust_wallet',{p_id:id,p_amount:Number(a)}); loadAdminData(); }catch(e){alert(e.message);} }
+
+// دالة حذف المستخدم
+async function deleteUserAccount(id, name) {
+  if(!confirm(`هل أنت متأكد من حذف حساب (${name}) نهائياً؟ لا يمكن التراجع عن هذه الخطوة!`)) return;
+  try {
+    await rpc('delete_user_account', { p_user_id: id });
+    alert('تم حذف الحساب بنجاح.');
+    loadAdminData();
+  } catch (e) {
+    alert('حدث خطأ أثناء الحذف: ' + e.message);
+  }
+}
 
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; const banner=document.getElementById('installBanner'); if(banner) banner.classList.remove('hide'); });
