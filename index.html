@@ -225,21 +225,27 @@ async function handleAuth(){
       if(full_name.length<3)throw new Error('اكتب الاسم بالكامل');
       if(!/^[0-9+]{8,15}$/.test(phone))throw new Error('رقم الهاتف غير صحيح');
       
-      // فلتر ذكي لرقم اللوحة
+      // فلتر صارم لرقم اللوحة (3 أرقام + 3 حروف على الأقل)
       if(role==='driver'){
         if(!vehicle_type || vehicle_type.length < 3) throw new Error('اكتب نوع العربية بشكل صحيح (مثال: سوزوكي، جامبو)');
         
-        const plate_clean = plate_number.replace(/\s+/g, ' '); 
+        const plate_clean = plate_number.replace(/\s+/g, ' ').trim(); 
         const forbidden = ['لا يوجد', 'مفيش', 'بدون', 'مش معايا', 'لسه', 'مستلمة'];
         
         if(forbidden.some(w => plate_clean.includes(w))) {
            throw new Error('رقم اللوحة غير صحيح. لازم تكتب رقم اللوحة الفعلي.');
         }
-        if(plate_clean.length < 4) {
-           throw new Error('رقم اللوحة قصير جداً. يرجى كتابة رقم اللوحة كامل.');
+        
+        // عد الأرقام (عربي وإنجليزي)
+        const digitCount = (plate_clean.match(/[0-9٠-٩]/g) || []).length;
+        // عد الحروف (عربي وإنجليزي)
+        const letterCount = (plate_clean.match(/[a-zA-Zأ-يء]/g) || []).length;
+        
+        if (digitCount < 3) {
+           throw new Error('رقم اللوحة لازم يحتوي على 3 أرقام على الأقل (مثال: 1234 أ ب ج).');
         }
-        if(!/[0-9٠-٩]/.test(plate_clean)) {
-           throw new Error('رقم اللوحة يجب أن يحتوي على أرقام (مثال: 1234 أ ب ج).');
+        if (letterCount < 3) {
+           throw new Error('رقم اللوحة لازم يحتوي على 3 حروف على الأقل (مثال: 1234 أ ب ج).');
         }
       }
       
