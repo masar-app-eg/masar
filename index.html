@@ -27,6 +27,14 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
 </head>
 <body>
 
+<!-- شاشة التحميل -->
+<div id="loader" class="hide fixed inset-0 bg-black bg-opacity-50 z-[9999] flex justify-center items-center">
+  <div class="bg-white p-5 rounded-xl font-bold flex flex-col items-center">
+    <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-yellow-500 mb-3"></div>
+    <p>جاري التحميل...</p>
+  </div>
+</div>
+
 <div id="installBanner" class="hide fixed bottom-20 left-4 right-4 bg-gray-900 text-white p-3 rounded-xl shadow-2xl z-[9999] border border-gray-700 flex justify-between items-center" dir="rtl">
   <div class="flex items-center gap-3">
     <div class="bg-yellow-500 text-black font-black text-xl rounded-lg w-10 h-10 flex items-center justify-center">M</div>
@@ -87,9 +95,14 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
   </div>
 </div>
 
-<div id="approvalScreen" class="hide text-center card mt-10">
-  <div class="text-5xl mb-4">⏳</div>
-  <h2 class="text-xl font-bold text-red-600">حسابك قيد المراجعة</h2>
+<!-- شاشة المراجعة المعدلة -->
+<div id="approvalScreen" class="hide text-center card mt-10 p-8">
+  <div class="text-5xl mb-4 animate-bounce">⏳</div>
+  <h2 class="text-xl font-bold text-red-600 mb-2">حسابك قيد المراجعة</h2>
+  <p class="text-sm text-gray-600 mb-6">سيتم تفعيل حسابك قريباً من قبل الإدارة.</p>
+  <a href="https://wa.me/201008781263?text=مرحباً، أنا سجلت في تطبيق مسار وأريد تفعيل حسابي." target="_blank" class="bg-green-500 text-white font-bold py-3 px-6 rounded-lg inline-block shadow w-full">
+    💬 تواصل مع الإدارة للتفعيل السريع
+  </a>
 </div>
 
 <!-- العميل -->
@@ -191,6 +204,10 @@ let me=null,authMode='login',pollTimer=null,sound=false,knownPending=[];
 let live={},known={},mainChannel=null,debounce=null;
 let isAdminLogin = false;
 let watchId = null; 
+let lastLocationUpdate = 0; 
+
+function showLoader() { document.getElementById('loader').classList.remove('hide'); }
+function hideLoader() { document.getElementById('loader').classList.add('hide'); }
 
 function toggleAdminLogin() {
   isAdminLogin = !isAdminLogin;
@@ -217,6 +234,8 @@ function setAuthMode(m){
 async function handleAuth(){
   const password=$('password').value;
   const btn=$('authBtn');btn.disabled=true;
+  showLoader(); 
+
   try{
     if(!password) throw new Error('اكتب الباسورد');
     
@@ -261,8 +280,12 @@ async function handleAuth(){
       if(data.session)await loadApp(data.user);
       else{alert('تم إنشاء الحساب.');setAuthMode('login');}
     }
-  }catch(e){alert(e.message);}
-  btn.disabled=false;
+  }catch(e){
+    alert(e.message);
+  } finally {
+    hideLoader(); 
+    btn.disabled=false;
+  }
 }
 
 async function loadApp(user){
@@ -296,9 +319,13 @@ function startTrackingLocation() {
   if ("geolocation" in navigator) {
     watchId = navigator.geolocation.watchPosition(
       (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        updateDriverLocationInDB(lat, lng);
+        const now = Date.now();
+        if (now - lastLocationUpdate > 15000) { 
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          updateDriverLocationInDB(lat, lng);
+          lastLocationUpdate = now;
+        }
       },
       (error) => console.log("GPS Error: " + error.message),
       { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
@@ -342,7 +369,17 @@ function listen(rerender,filter){
 
 // === دوال الخريطة والمسار ===
 let map=null,mk={pickup:null,dropoff:null},pos={pickup:null,dropoff:null},pickMode='pickup';
-let routeControls = {}; // لتخزين المسارات عشان منعملهاش كل شوية
+let routeControls = {}; 
+
+function clearAllMaps() {
+  for (let key in routeControls) {
+    if (routeControls[key]) {
+      routeControls[key].remove(); 
+      delete routeControls[key];
+    }
+  }
+  live = {}; 
+}
 
 function initClientMap(){
   if(map){map.remove();map=null;}
@@ -381,41 +418,25 @@ async function searchAddress(type) {
   } catch(e) { alert('خطأ في البحث'); }
 }
 
-// دالة رسم المسار (تستخدم Leaflet Routing Machine)
 function drawRouteMap(containerId, lat1, lng1, lat2, lng2, driverLat=null, driverLng=null) {
   const el = $(containerId);
   if(!el) return;
-
-  // لو الخريطة موجودة بالفعل، منعملهاش تاني
   if (routeControls[containerId]) return;
 
   const m = L.map(el).setView([lat1, lng1], 11);
   L.tileLayer(TILE,{attribution:'© OpenStreetMap'}).addTo(m);
-
-  // إضافة ماركر للتحميل والتسليم
   L.marker([lat1, lng1]).addTo(m).bindPopup('التحميل');
   L.marker([lat2, lng2]).addTo(m).bindPopup('التسليم');
+  if(driverLat) { L.marker([driverLat, driverLng], {icon: truckIcon}).addTo(m).bindPopup('السائق'); }
 
-  // إضافة ماركر السائق لو موجود
-  if(driverLat) {
-      L.marker([driverLat, driverLng], {icon: truckIcon}).addTo(m).bindPopup('السائق');
-  }
-
-  // رسم خط السير وحساب المسافة
   const routingControl = L.Routing.control({
     waypoints: [L.latLng(lat1, lng1), L.latLng(lat2, lng2)],
-    routeWhileDragging: false,
-    addWaypoints: false,
-    fitSelectedRoutes: true,
-    show: false, // إخفاء التعليمات النصية
-    lineOptions: { styles: [{color: '#eab308', weight: 5}] } // لون الخط أصفر مسار
+    routeWhileDragging: false, addWaypoints: false, fitSelectedRoutes: true, show: false, 
+    lineOptions: { styles: [{color: '#eab308', weight: 5}] } 
   }).on('routesfound', function(e) {
-    const routes = e.routes;
-    const summary = routes[0].summary;
-    const distKm = (summary.totalDistance / 1000).toFixed(1); // المسافة بالكيلو
-    const timeMin = Math.round(summary.totalTime / 60); // الوقت بالدقايق
-
-    // تحديث النص اللي بيظهر فوق الخريطة
+    const routes = e.routes; const summary = routes[0].summary;
+    const distKm = (summary.totalDistance / 1000).toFixed(1); 
+    const timeMin = Math.round(summary.totalTime / 60); 
     if($(containerId.replace('-map','-info'))) {
        $(containerId.replace('-map','-info')).innerHTML = `المسافة: <span class="text-blue-600 font-bold">${distKm} كم</span> | الوقت المتوقع: <span class="text-green-600 font-bold">${timeMin} دقيقة</span>`;
     }
@@ -454,6 +475,8 @@ async function submitRating(id,stars){ try{await rpc('rate_order',{p_id:id,p_sta
 async function acceptOffer(id){ if(!confirm('هل توافق على سعر السائق؟'))return; try{await rpc('accept_driver_offer',{p_order_id:id});alert('تم القبول');renderClientOrders();}catch(e){alert(e.message);} }
 
 async function renderClientOrders(){
+  clearAllMaps(); 
+
   const{data:orders}=await db.from('orders').select('*').eq('client_id',me.id).order('created_at',{ascending:false});
   const{data:secrets}=await db.from('order_secrets').select('order_id,otp_code');
   const otps={};(secrets||[]).forEach(s=>otps[s.order_id]=s.otp_code);
@@ -475,7 +498,6 @@ async function renderClientOrders(){
       negotiationBox = `<div class="mt-2 bg-blue-50 border border-blue-200 p-2 rounded-lg text-center"><p class="text-sm font-bold text-blue-800 mb-1">السائق عرض: ${money(o.driver_offer)}</p><button onclick="acceptOffer('${o.id}')" class="w-full bg-blue-600 text-white font-bold py-1 rounded">✅ موافقة وتأكيد</button></div>`;
     }
 
-    // تفاصيل الخريطة
     let mapBox = '';
     if(active) {
         mapBox = `
@@ -496,7 +518,6 @@ async function renderClientOrders(){
     </div>`;
   }).join('') || '<p class="text-sm text-gray-500">لا توجد طلبات</p>';
   
-  // رسم خرائط المسار للطلبات النشطة
   setTimeout(() => {
     list.filter(o => o.status==='accepted'||o.status==='picked_up').forEach(o => {
         drawRouteMap(`client-map-${o.id}`, o.pickup_lat, o.pickup_lng, o.dropoff_lat, o.dropoff_lng);
@@ -516,6 +537,8 @@ async function makeOffer(id) {
 
 // === شاشة السائق ===
 async function renderDriverOrders(){
+  clearAllMaps(); 
+
   const{data:myOrders}=await db.from('orders').select('*').eq('driver_id',me.id).order('created_at',{ascending:false});
   const{data:pend}=await db.from('orders').select('*').eq('status','pending').is('driver_id',null);
   const allOrders=myOrders||[];
@@ -547,7 +570,6 @@ async function renderDriverOrders(){
       </div>`;
     }).join('') || '<p class="text-sm text-gray-500">لا توجد رحلات</p>';
     
-    // رسم خرائط المسار للسائق للطلبات المقبولة
     setTimeout(() => {
         allOrders.filter(o => o.status==='accepted'||o.status==='picked_up').forEach(o => {
             drawRouteMap(`driver-map-${o.id}`, o.pickup_lat, o.pickup_lng, o.dropoff_lat, o.dropoff_lng, o.driver_lat, o.driver_lng);
@@ -599,14 +621,16 @@ async function showReceipt(orderId){ try{ const otp=await rpc('get_order_otp',{p
 
 // === دوال لوحة الإدارة ===
 async function loadAdminData(){
+  clearAllMaps(); 
+  
   const{data:os}=await db.from('orders').select('*').order('created_at',{ascending:false});
   const{data:users}=await db.from('profiles').select('*');
   
   const activeOrders = os ? os.filter(o => o.status === 'accepted' || o.status === 'picked_up') : [];
   
-  // 1. رسم خرائط التتبع النشطة
   if($('adminLiveTracking')) {
-    $('adminLiveTracking').innerHTML = activeOrders.map(o => `
+    const displayOrders = activeOrders.slice(0, 5); 
+    $('adminLiveTracking').innerHTML = displayOrders.map(o => `
       <div class="card mb-2">
         <p class="font-bold text-sm">شحنة ${esc(o.cargo_type)} - ${esc(o.pickup_address)}</p>
         <p id="admin-info-${o.id}" class="text-sm font-bold text-center mb-1"></p>
@@ -615,30 +639,72 @@ async function loadAdminData(){
     `).join('') || '<p class="text-sm text-gray-500">لا توجد شحنات نشطة حالياً</p>';
     
     setTimeout(() => {
-      activeOrders.forEach(o => {
+      displayOrders.forEach(o => {
         drawRouteMap(`admin-map-${o.id}`, o.pickup_lat, o.pickup_lng, o.dropoff_lat, o.dropoff_lng, o.driver_lat, o.driver_lng);
       });
     }, 100);
   }
   
-  // 2. قائمة المستخدمين
   if($('adminUsersList')){
-    $('adminUsersList').innerHTML=(users||[]).map(u=>`
-      <div class="card flex justify-between items-center mb-2">
+    const allUsers = users || [];
+    const pendingDrivers = allUsers.filter(u => u.role === 'driver' && !u.approved);
+    const approvedUsers = allUsers.filter(u => u.role !== 'driver' || u.approved);
+
+    let html = '';
+
+    if(pendingDrivers.length > 0) {
+      html += `<h4 class="font-bold text-red-600 mb-2 mt-4 text-sm">⚠️ سواقين في انتظار الموافقة (${pendingDrivers.length})</h4>`;
+      html += pendingDrivers.map(u => `
+        <div class="card flex justify-between items-center mb-2 border-r-4 border-red-500">
+          <div>
+            <p class="font-bold text-sm">${esc(u.full_name)}</p>
+            <p class="text-xs text-gray-500">${esc(u.phone)}</p>
+            <p class="text-xs text-blue-700 font-bold mt-1">🚚 ${esc(u.vehicle_type)} | لوحة: ${esc(u.plate_number)}</p>
+          </div>
+          <div class="flex gap-2 items-center">
+            <button onclick="approveDriver('${u.id}')" class="bg-green-500 text-white text-xs px-2 py-1 rounded shadow font-bold">✅ موافقة</button>
+            <button onclick="deleteUser('${u.id}', '${esc(u.full_name)}')" class="bg-red-500 text-white text-xs px-2 py-1 rounded shadow font-bold">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    html += `<h4 class="font-bold text-gray-700 mb-2 mt-6 text-sm">المستخدمين المسجلين</h4>`;
+    html += approvedUsers.map(u => `
+      <div class="card flex justify-between items-center mb-2 opacity-80">
         <div>
-          <p class="font-bold text-sm">${esc(u.full_name)} (${u.role})</p>
+          <p class="font-bold text-sm">${esc(u.full_name)} <span class="text-xs font-normal text-gray-500">(${u.role})</span></p>
           <p class="text-xs text-gray-500">${esc(u.phone)}</p>
           ${u.role === 'driver' ? `<p class="text-xs text-blue-700 font-bold mt-1">🚚 ${esc(u.vehicle_type)} | لوحة: ${esc(u.plate_number)}</p>` : ''}
         </div>
-        <div class="flex flex-col gap-1">
-          ${u.role==='driver'&&!u.approved?`<button onclick="approveDriver('${u.id}')" class="bg-green-500 text-white text-xs px-2 py-1 rounded">✅ موافقة</button>`:''}
+        <div class="flex items-center gap-2">
+          ${u.approved ? '<span class="text-green-500 text-xs font-bold">✔️</span>' : ''}
+          <button onclick="deleteUser('${u.id}', '${esc(u.full_name)}')" class="bg-red-500 text-white text-xs px-2 py-1 rounded">🗑️ حذف</button>
         </div>
       </div>
     `).join('');
+
+    $('adminUsersList').innerHTML = html;
   }
 }
 
 async function approveDriver(id){ try{ await rpc('approve_driver',{p_id:id}); alert('تم التفعيل'); loadAdminData(); }catch(e){alert(e.message);} }
+
+// دالة حذف المستخدم
+async function deleteUser(id, name) {
+  if(!confirm(`هل أنت متأكد من حذف حساب "${name}" نهائياً؟ لا يمكن التراجع عن هذه الخطوة.`)) return;
+  showLoader();
+  try {
+    await rpc('delete_user_account', { p_user_id: id });
+    alert('تم حذف الحساب بنجاح');
+    loadAdminData();
+  } catch (e) {
+    console.error(e);
+    alert('حدث خطأ أثناء الحذف: ' + e.message + '\n(ملاحظة: إذا كان المستخدم لديه شحنات سابقة، قد يرفض النظام حذفه للحفاظ على سجل الشحنات).');
+  } finally {
+    hideLoader();
+  }
+}
 
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; const banner=document.getElementById('installBanner'); if(banner) banner.classList.remove('hide'); });
