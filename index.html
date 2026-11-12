@@ -103,7 +103,6 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
   </div>
 </div>
 
-<!-- شاشة المراجعة المعدلة -->
 <div id="approvalScreen" class="hide text-center card mt-10 p-8">
   <div class="text-5xl mb-4 animate-bounce">⏳</div>
   <h2 class="text-xl font-bold text-red-600 mb-2">حسابك قيد المراجعة</h2>
@@ -175,7 +174,10 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
 <div id="adminScreen" class="hide">
   <div class="bg-gray-900 p-5 rounded-2xl mb-4 text-center">
     <h2 class="text-2xl font-bold text-yellow-500">لوحة تحكم الإدارة 🛡️</h2>
-    <button onclick="loadAdminData()" class="mt-2 bg-gray-700 text-white text-xs px-3 py-1 rounded">🔄 تحديث البيانات</button>
+    <div class="flex justify-center gap-2 mt-2">
+      <button onclick="loadAdminData()" class="bg-gray-700 text-white text-xs px-3 py-1 rounded">🔄 تحديث</button>
+      <button id="notifBtn" onclick="requestNotificationPermission()" class="bg-blue-600 text-white text-xs px-3 py-1 rounded">🔔 تفعيل إشعارات المتصفح</button>
+    </div>
   </div>
 
   <!-- قسم الإحصائيات -->
@@ -204,7 +206,7 @@ const SUPABASE_URL='https://jzcwocvkqbuhpactazus.supabase.co';
 const SUPABASE_KEY='sb_publishable_ndfcyfS3Mz90d5_E-LQnbg_FW-cyLsJ';
 const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
-const APP_COMMISSION_PERCENT = 0.05; // نسبة التطبيق 5% (غير الرقم ده لو عايز نسبة تانية)
+const APP_COMMISSION_PERCENT = 0.05; 
 const WALLET_ENABLED=false;
 const WHATSAPP='201008781263';
 const POLL_MS=10000;
@@ -223,7 +225,24 @@ let isAdminLogin = false;
 let watchId = null; 
 let lastLocationUpdate = 0; 
 
-// === نظام الإشعارات ===
+// === الإشعارات ===
+function requestNotificationPermission() {
+  if (!("Notification" in window)) {
+    alert("متصفحك لا يدعم الإشعارات.");
+    return;
+  }
+  Notification.requestPermission().then(permission => {
+    if (permission === "granted") {
+      alert("تم تفعيل إشعارات المتصفح بنجاح! هتصلك تنبيهات بالطلبات الجديدة.");
+      $('notifBtn').innerText = "✅ الإشعارات مفعلة";
+      $('notifBtn').classList.replace('bg-blue-600', 'bg-green-600');
+      new Notification("تطبيق مسار", { body: "الإشعارات تعمل الآن بشكل ممتاز!" });
+    } else {
+      alert("لم يتم تفعيل الإشعارات. يمكنك تفعيلها من إعدادات المتصفح.");
+    }
+  });
+}
+
 let audioCtx;
 function playBeep() {
     try {
@@ -231,17 +250,22 @@ function playBeep() {
         const oscillator = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
         oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(800, audioCtx.currentTime); // تردد الصوت
+        oscillator.frequency.setValueAtTime(800, audioCtx.currentTime); 
         gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
         oscillator.connect(gainNode);
         gainNode.connect(audioCtx.destination);
         oscillator.start();
-        oscillator.stop(audioCtx.currentTime + 0.2); // مدة الصوت
+        oscillator.stop(audioCtx.currentTime + 0.2); 
     } catch(e) { console.log('Audio blocked', e); }
 }
 
 function showToast(title, message) {
     playBeep();
+    // إشعار المتصفح (لو مفعل)
+    if (Notification.permission === "granted") {
+        new Notification(title, { body: message, icon: 'https://cdn-icons-png.flaticon.com/512/854/854866.png' });
+    }
+    // إشعار داخلي
     const container = $('toastContainer');
     const toast = document.createElement('div');
     toast.className = 'toast';
@@ -345,7 +369,11 @@ async function loadApp(user){
   if(!error && data && data.role === 'admin') {
       me=data; $('logoutBtn').classList.remove('hide');
       showScreen('adminScreen');loadAdminData();
-      listenAdminNotifications(); // تشغيل إشعارات الإدارة
+      listenAdminNotifications(); 
+      if (Notification.permission === "granted") {
+        $('notifBtn').innerText = "✅ الإشعارات مفعلة";
+        $('notifBtn').classList.replace('bg-blue-600', 'bg-green-600');
+      }
       return;
   }
 
@@ -365,14 +393,13 @@ async function loadApp(user){
   }
 }
 
-// === نظام إشعارات الإدارة ===
+// === إشعارات الإدارة ===
 function listenAdminNotifications() {
-    // قناة لمراقبة الطلبات الجديدة
     db.channel('admin_orders_notif')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, payload => {
           const o = payload.new;
           showToast('📦 طلب جديد!', `تم طلب شحنة ${o.cargo_type} بقيمة ${o.price} ج.م.`);
-          loadAdminData(); // تحديث البيانات فوراً
+          loadAdminData(); 
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, payload => {
           const o = payload.new; const old = payload.old;
@@ -384,13 +411,12 @@ function listenAdminNotifications() {
       })
       .subscribe();
 
-    // قناة لمراقبة المستخدمين الجدد
     db.channel('admin_users_notif')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, payload => {
           const u = payload.new;
           const roleAr = u.role === 'driver' ? 'سائق' : u.role === 'client' ? 'عميل' : 'مستخدم';
           showToast('👤 مستخدم جديد!', `تم تسجيل ${roleAr} جديد باسم: ${u.full_name}`);
-          loadAdminData(); // تحديث البيانات فوراً
+          loadAdminData(); 
       })
       .subscribe();
 }
@@ -557,7 +583,8 @@ async function acceptOffer(id){ if(!confirm('هل توافق على سعر ال�
 async function renderClientOrders(){
   clearAllMaps(); 
 
-  const{data:orders}=await db.from('orders').select('*').eq('client_id',me.id).order('created_at',{ascending:false});
+  // جلب بيانات الطلبات مع رقم موبايل السائق
+  const{data:orders}=await db.from('orders').select('*, driver:profiles!orders_driver_id_fkey(phone)').eq('client_id',me.id).order('created_at',{ascending:false});
   const{data:secrets}=await db.from('order_secrets').select('order_id,otp_code');
   const otps={};(secrets||[]).forEach(s=>otps[s.order_id]=s.otp_code);
   
@@ -587,11 +614,19 @@ async function renderClientOrders(){
         </div>`;
     }
 
+    // زرار واتساب السائق
+    let waBtn = '';
+    if(active && o.driver && o.driver.phone) {
+        const waLink = `https://wa.me/2${o.driver.phone}?text=${encodeURIComponent('مرحباً، أنا عميلك في تطبيق مسار بخصوص شحنة ' + o.cargo_type + ' من ' + o.pickup_address + ' إلى ' + o.dropoff_address)}`;
+        waBtn = `<a href="${waLink}" target="_blank" class="mt-2 w-full flex justify-center items-center gap-2 bg-green-500 text-white font-bold py-2 rounded-lg shadow hover:bg-green-600"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.432 2.504 1.16 3.472l-.76 2.78 2.848-.75c.932.513 2.012.811 3.164.811 3.183 0 5.769-2.586 5.769-5.766 0-3.18-2.586-5.766-5.768-5.766zm3.656 8.196c-.149.419-.868.794-1.208.834-.34.04-.756.164-2.424-.544-2.012-.854-3.264-2.902-3.362-3.036-.098-.134-.792-1.055-.792-2.012 0-.958.499-1.428.678-1.624.179-.196.39-.245.52-.245.13 0 .261.004.373.008.116.004.272-.044.424.323.158.382.542 1.322.589 1.418.047.096.078.208.011.34-.067.132-.143.261-.276.41-.133.149-.275.313-.39.45-.115.137-.244.29-.11.535.134.245.597.986 1.28 1.596.877.786 1.612 1.032 1.868 1.164.256.132.404.11.553-.066.149-.176.636-.742.805-1.003.169-.261.338-.217.553-.134.215.083 1.366.644 1.6.761.234.117.39.176.448.276.057.099.057.572-.092.991z"/></svg> تواصل مع السائق واتساب</a>`;
+    }
+
     return `<div class="card border-r-4 ${o.status==='pending'?'border-yellow-500':o.status==='delivered'?'border-green-500':o.status==='cancelled'?'border-gray-400':'border-blue-500'}">
       <div class="flex justify-between"><span class="font-bold">${esc(o.cargo_type)}</span><span class="text-xs bg-gray-100 px-2 py-1 rounded">${STATUS[o.status]||esc(o.status)}</span></div>
       <p class="text-sm mt-2 text-gray-600">📍 من: ${esc(o.pickup_address)}<br>🏁 إلى: ${esc(o.dropoff_address)}</p>
       ${details} <p class="font-bold mt-2 text-lg">الإجمالي: ${money(total)}</p>
       ${mapBox}
+      ${waBtn}
       ${negotiationBox}
       <p class="text-sm text-blue-700 font-bold mb-2 mt-2">الدفع: كاش</p>
       ${otp}${rating}${cancel}
@@ -619,7 +654,8 @@ async function makeOffer(id) {
 async function renderDriverOrders(){
   clearAllMaps(); 
 
-  const{data:myOrders}=await db.from('orders').select('*').eq('driver_id',me.id).order('created_at',{ascending:false});
+  // جلب بيانات الطلبات مع رقم موبايل العميل
+  const{data:myOrders}=await db.from('orders').select('*, client:profiles!orders_client_id_fkey(phone)').eq('driver_id',me.id).order('created_at',{ascending:false});
   const{data:pend}=await db.from('orders').select('*').eq('status','pending').is('driver_id',null);
   const allOrders=myOrders||[];
   
@@ -641,11 +677,19 @@ async function renderDriverOrders(){
           </div>`;
       }
 
+      // زرار واتساب العميل
+      let waBtn = '';
+      if((o.status==='accepted' || o.status==='picked_up') && o.client && o.client.phone) {
+          const waLink = `https://wa.me/2${o.client.phone}?text=${encodeURIComponent('مرحباً، أنا السائق في تطبيق مسار، أنا في طريقي لاستلام الشحنة الخاصة بك')}`;
+          waBtn = `<a href="${waLink}" target="_blank" class="mt-2 w-full flex justify-center items-center gap-2 bg-green-500 text-white font-bold py-2 rounded-lg shadow hover:bg-green-600"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.432 2.504 1.16 3.472l-.76 2.78 2.848-.75c.932.513 2.012.811 3.164.811 3.183 0 5.769-2.586 5.769-5.766 0-3.18-2.586-5.766-5.768-5.766zm3.656 8.196c-.149.419-.868.794-1.208.834-.34.04-.756.164-2.424-.544-2.012-.854-3.264-2.902-3.362-3.036-.098-.134-.792-1.055-.792-2.012 0-.958.499-1.428.678-1.624.179-.196.39-.245.52-.245.13 0 .261.004.373.008.116.004.272-.044.424.323.158.382.542 1.322.589 1.418.047.096.078.208.011.34-.067.132-.143.261-.276.41-.133.149-.275.313-.39.45-.115.137-.244.29-.11.535.134.245.597.986 1.28 1.596.877.786 1.612 1.032 1.868 1.164.256.132.404.11.553-.066.149-.176.636-.742.805-1.003.169-.261.338-.217.553-.134.215.083 1.366.644 1.6.761.234.117.39.176.448.276.057.099.057.572-.092.991z"/></svg> تواصل مع العميل واتساب</a>`;
+      }
+
       return `<div class="card border-r-4 ${o.status==='delivered'?'border-green-500':'border-blue-500'}">
         <div class="flex justify-between"><span class="font-bold">${esc(o.cargo_type)}</span><span class="text-xs bg-gray-100 px-2 py-1 rounded">${STATUS[o.status]||esc(o.status)}</span></div>
         <p class="text-sm mt-2 text-gray-600">📍 من: ${esc(o.pickup_address)}<br>🏁 إلى: ${esc(o.dropoff_address)}</p>
         ${details} <p class="font-bold mt-2">سعر الشحنة: ${money(o.price)} + (بوابات: ${money(o.toll_fees||0)})</p>
         ${mapBox}
+        ${waBtn}
         ${actionBtn}
       </div>`;
     }).join('') || '<p class="text-sm text-gray-500">لا توجد رحلات</p>';
