@@ -16,10 +16,13 @@
 body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
 .hide{display:none!important}
 #map{height:240px;width:100%;border-radius:8px;margin:8px 0;border:1px solid #ccc;z-index:0}
+.route-map{height:200px;width:100%;border-radius:8px;margin:8px 0;border:1px solid #ccc;z-index:0}
 .truck{font-size:24px;text-align:center;line-height:24px}
 .star{font-size:26px;cursor:pointer;color:#d1d5db}.star:hover{color:#f59e0b}
 .inp{width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:.5rem;margin-bottom:.5rem;background:#fff}
 .card{background:#fff;padding:1rem;border-radius:.75rem;box-shadow:0 1px 2px #0001;margin-bottom:.75rem}
+/* إخفاء تعليمات المسار النصية الطويلة */
+.leaflet-routing-container { display: none !important; }
 </style>
 </head>
 <body>
@@ -79,7 +82,6 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
   </div>
   
   <button onclick="handleAuth()" id="authBtn" class="w-full bg-yellow-500 font-bold p-3 rounded-lg">دخول</button>
-
   <div class="text-center mt-4">
     <button onclick="toggleAdminLogin()" id="adminToggleBtn" class="text-xs text-gray-400 underline">دخول الإدارة (لصاحب التطبيق)</button>
   </div>
@@ -88,9 +90,9 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
 <div id="approvalScreen" class="hide text-center card mt-10">
   <div class="text-5xl mb-4">⏳</div>
   <h2 class="text-xl font-bold text-red-600">حسابك قيد المراجعة</h2>
-  <p class="text-sm text-gray-500 mt-2">هتتواصل معاك الإدارة لاستكمال التحقق من بياناتك.</p>
 </div>
 
+<!-- العميل -->
 <div id="clientScreen" class="hide">
   <div class="card">
     <h3 class="font-bold text-lg mb-3">طلب شحنة جديدة</h3>
@@ -103,50 +105,43 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
       <button onclick="searchAddress('dropoff')" class="bg-gray-200 px-3 rounded-lg font-bold">🔍</button>
     </div>
     <select id="cargoType" class="inp font-bold">
-      <option value="أثاث">🛋️ أثاث (منزل / مكتب)</option>
-      <option value="أجهزة كهربائية">📺 أجهزة كهربائية وإلكترونيات</option>
-      <option value="قطع غيار">⚙️ قطع غيار ومعدات</option>
-      <option value="مواد غذائية">🛒 مواد غذائية / بقالة</option>
-      <option value="ملابس">👕 ملابس وأقمشة</option>
-      <option value="مواد بناء">🧱 مواد بناء / أسمنت</option>
+      <option value="أثاث">🛋️ أثاث</option>
+      <option value="أجهزة كهربائية">📺 أجهزة كهربائية</option>
+      <option value="قطع غيار">⚙️ قطع غيار</option>
+      <option value="مواد غذائية">🛒 مواد غذائية</option>
+      <option value="ملابس">👕 ملابس</option>
+      <option value="مواد بناء">🧱 مواد بناء</option>
       <option value="أخرى">📦 أخرى</option>
     </select>
     <input type="text" id="cargoDesc" placeholder="وصف الشحنة (اختياري)" class="inp">
     <input type="number" id="weight" placeholder="الوزن التقريبي بالطن (اختياري)" class="inp">
-    
     <select id="vehicleType" class="inp" onchange="updateEstimate()">
-      <option value="light">🚐 نقل خفيف (سوزوكي / ربع نقل)</option>
-      <option value="medium">🚚 نقل متوسط (جامبو)</option>
-      <option value="heavy">🚛 نقل ثقيل (تريلا / نقل ثقيل)</option>
+      <option value="light">🚐 نقل خفيف</option>
+      <option value="medium">🚚 نقل متوسط</option>
+      <option value="heavy">🚛 نقل ثقيل</option>
     </select>
-
     <div class="bg-yellow-50 p-2 rounded-lg mb-2 border border-yellow-200">
       <label class="text-xs font-bold text-gray-700 block mb-1">السعر اللي إنت عايزه (اختياري):</label>
-      <input type="number" id="customPrice" placeholder="سيبها فاضية لو عايز السعر التلقائي" class="inp !mb-0 text-green-700 font-bold">
+      <input type="number" id="customPrice" placeholder="سيبها فاضية للسعر التلقائي" class="inp !mb-0 text-green-700 font-bold">
     </div>
-
     <div class="flex gap-2">
       <button id="btnPick" onclick="setPickMode('pickup')" class="flex-1 py-2 rounded-lg text-sm font-bold">📍 حدد التحميل</button>
       <button id="btnDrop" onclick="setPickMode('dropoff')" class="flex-1 py-2 rounded-lg text-sm font-bold">🏁 حدد التسليم</button>
     </div>
     <div id="map"></div>
-    <p class="text-sm font-bold text-center text-green-700 mb-2" id="estimate">اختار نقطة التحميل ثم التسليم على الخريطة</p>
+    <p class="text-sm font-bold text-center text-green-700 mb-2" id="estimate">اختار نقطة التحميل ثم التسليم</p>
     <button onclick="createOrder()" id="orderBtn" class="w-full bg-yellow-500 font-bold p-3 rounded-lg">تأكيد الطلب</button>
   </div>
   <h3 class="font-bold text-lg mb-2 mt-6">شحناتي</h3>
   <div id="clientOrders"></div>
 </div>
 
+<!-- السائق -->
 <div id="driverScreen" class="hide">
-  <audio id="notificationSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
   <div class="bg-gray-900 text-white p-5 rounded-2xl mb-4 flex justify-between items-center">
     <div>
       <p class="text-gray-400 text-sm">رصيد المحفظة</p>
       <p class="text-2xl font-bold text-yellow-500" id="driverWallet">0</p>
-      <p class="text-xs text-gray-400" id="walletHint"></p>
-    </div>
-    <div class="flex gap-2 flex-col">
-      <button onclick="enableSound()" id="soundBtn" class="bg-yellow-500 text-black px-3 py-1 rounded text-xs font-bold">🔔 تفعيل الصوت</button>
     </div>
   </div>
   <h3 class="font-bold text-lg mb-2 mt-6">رحلاتي الحالية</h3>
@@ -155,53 +150,30 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
   <div id="driverPendingOrders" class="pb-10"></div>
 </div>
 
+<!-- الأدمن -->
 <div id="adminScreen" class="hide">
   <div class="bg-gray-900 p-5 rounded-2xl mb-4 text-center">
     <h2 class="text-2xl font-bold text-yellow-500">لوحة تحكم الإدارة 🛡️</h2>
     <button onclick="loadAdminData()" class="mt-2 bg-gray-700 text-white text-xs px-3 py-1 rounded">🔄 تحديث</button>
   </div>
-  <div class="grid grid-cols-2 gap-2 mb-4">
-    <div class="card border-r-4 border-blue-500 !mb-0"><p class="text-xs text-gray-500">إجمالي الطلبات</p><p class="text-xl font-bold" id="statTotalOrders">0</p></div>
-    <div class="card border-r-4 border-green-500 !mb-0"><p class="text-xs text-gray-500">مبالغ الطلبات المسلّمة</p><p class="text-xl font-bold" id="statTotalRevenue">0</p></div>
-    <div class="card border-r-4 border-red-500 col-span-2 !mb-0"><p class="text-xs text-gray-500">صافي أرباح المنصة (5%)</p><p class="text-xl font-bold" id="statPlatformCommission">0</p></div>
-  </div>
-  <h3 class="font-bold text-lg mb-2 mt-6">المستخدمين</h3>
+  
+  <h3 class="font-bold text-lg mb-2 mt-6">تتبع الشحنات النشطة 📍</h3>
+  <div id="adminLiveTracking" class="mb-6"></div>
+
+  <h3 class="font-bold text-lg mb-2">المستخدمين</h3>
   <div id="adminUsersList" class="mb-6"></div>
-  <h3 class="font-bold text-lg mb-2">سجل الطلبات</h3>
-  <div id="adminOrdersList"></div>
 </div>
 </main>
 
-<div id="receiptModal" class="hide fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[9999]" dir="rtl">
-  <div class="bg-white p-6 rounded-2xl shadow-2xl text-center max-w-xs w-full mx-4">
-    <div class="text-4xl mb-2">📄</div>
-    <h3 class="text-xl font-bold mb-2 text-gray-800">إيصال التسليم</h3>
-    <p class="text-sm text-gray-600 mb-2">كود التسليم الذي تم استخدامه:</p>
-    <p id="receiptOtp" class="text-4xl font-black text-red-600 tracking-widest mb-4">----</p>
-    <p class="text-xs text-gray-500 mb-6">(هذا الكود يثبت تسليم الشحنة)</p>
-    <button onclick="document.getElementById('receiptModal').classList.add('hide')" class="w-full bg-yellow-500 text-black font-bold py-3 rounded-xl shadow">حسناً</button>
-  </div>
-</div>
-
-<a href="https://wa.me/201008781263" target="_blank" rel="noopener" class="fixed bottom-4 left-4 bg-green-500 text-white p-4 rounded-full shadow-lg z-50">
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
-</a>
-
 <script>
 if(typeof L==='undefined'||typeof supabase==='undefined'){
-  document.body.innerHTML='<div style="font-family:sans-serif;text-align:center;padding:40px" dir="rtl"><h2>تعذر تحميل مكتبات التطبيق</h2><p>تأكد من اتصال الإنترنت ثم أعد تحميل الصفحة.</p></div>';
+  document.body.innerHTML='<div style="text-align:center;padding:40px"><h2>تعذر تحميل المكتبات</h2></div>';
   throw new Error('Libraries failed to load');
 }
 
 const SUPABASE_URL='https://jzcwocvkqbuhpactazus.supabase.co';
 const SUPABASE_KEY='sb_publishable_ndfcyfS3Mz90d5_E-LQnbg_FW-cyLsJ';
 const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => { navigator.serviceWorker.register('/masar/sw.js').catch(err => console.log('SW error', err)); });
-}
-function askNotificationPermission() { if ("Notification" in window) { if (Notification.permission !== "granted" && Notification.permission !== "denied") { Notification.requestPermission(); } } }
-askNotificationPermission();
 
 const WALLET_ENABLED=false;
 const WHATSAPP='201008781263';
@@ -217,7 +189,8 @@ const STATUS={pending:'انتظار',accepted:'تم القبول',picked_up:'ج�
 
 let me=null,authMode='login',pollTimer=null,sound=false,knownPending=[];
 let live={},known={},mainChannel=null,debounce=null;
-let isAdminLogin = false; 
+let isAdminLogin = false;
+let watchId = null; 
 
 function toggleAdminLogin() {
   isAdminLogin = !isAdminLogin;
@@ -244,64 +217,49 @@ function setAuthMode(m){
 async function handleAuth(){
   const password=$('password').value;
   const btn=$('authBtn');btn.disabled=true;
-  
   try{
     if(!password) throw new Error('اكتب الباسورد');
     
-    let emailToUse = '';
-    let phone = '';
+    let emailToUse = '', phone = '';
 
     if (isAdminLogin) {
       emailToUse = $('adminEmail').value.trim();
-      if(!emailToUse) throw new Error('اكتب إيميل الإدارة');
     } else {
       phone = $('phoneInput').value.trim();
       if(!phone) throw new Error('اكتب رقم الموبايل');
-      if(!/^[0-9+]{10,15}$/.test(phone)) throw new Error('رقم الموبايل غير صحيح');
       emailToUse = `${phone}@masar.app`;
     }
 
     if(authMode==='login'){
       const{data,error}=await db.auth.signInWithPassword({email:emailToUse,password});
-      if(error)throw new Error('البيانات غير صحيحة. تأكد من الرقم والباسورد.');
+      if(error)throw new Error('البيانات غير صحيحة');
       await loadApp(data.user);
     }else{
       const full_name=$('name').value.trim(),role=$('role').value;
       const vehicle_type=$('vehicle').value.trim(),plate_number=$('plate').value.trim();
       
-      if(password.length<6)throw new Error('كلمة المرور لازم 6 أحرف على الأقل');
-      if(full_name.length<3)throw new Error('اكتب الاسم بالكامل');
+      if(password.length<6)throw new Error('الباسورد لازم 6 أحرف');
+      if(full_name.length<3)throw new Error('اكتب الاسم');
       
       if(role==='driver'){
-        if(!vehicle_type || vehicle_type.length < 3) throw new Error('اكتب نوع العربية بشكل صحيح (مثال: سوزوكي، جامبو)');
-        
+        if(!vehicle_type) throw new Error('اكتب نوع العربية');
         const plate_clean = plate_number.replace(/\s+/g, ' ').trim(); 
-        const forbidden = ['لا يوجد', 'مفيش', 'بدون', 'مش معايا', 'لسه', 'مستلمة'];
-        
-        if(forbidden.some(w => plate_clean.includes(w))) {
-           throw new Error('رقم اللوحة غير صحيح. لازم تكتب رقم اللوحة الفعلي.');
-        }
-        
         const digitCount = (plate_clean.match(/[0-9٠-٩]/g) || []).length;
         const letterCount = (plate_clean.match(/[a-zA-Zأ-يء]/g) || []).length;
-        
-        if (digitCount < 3) throw new Error('رقم اللوحة لازم يحتوي على 3 أرقام على الأقل (مثال: 1234 أ ب ج).');
-        if (letterCount < 3) throw new Error('رقم اللوحة لازم يحتوي على 3 حروف على الأقل (مثال: 1234 أ ب ج).');
+        if (digitCount < 3 || letterCount < 3) throw new Error('رقم اللوحة لازم 3 أرقام و3 حروف على الأقل');
       }
       
       const{data,error}=await db.auth.signUp({
-        email: emailToUse, 
-        password: password,
+        email: emailToUse, password: password,
         options:{data:{ full_name, phone: phone, role, vehicle_type, plate_number }}
       });
       
       if(error) {
-        if(error.message.includes('already registered')) throw new Error('رقم الموبايل ده متسجل قبل كده. جرب تدخل.');
+        if(error.message.includes('already registered')) throw new Error('رقم الموبايل متسجل قبل كده');
         throw error;
       }
-      
       if(data.session)await loadApp(data.user);
-      else{alert('تم إنشاء الحساب بنجاح. تقدر تدخل دلوقتي.');setAuthMode('login');}
+      else{alert('تم إنشاء الحساب.');setAuthMode('login');}
     }
   }catch(e){alert(e.message);}
   btn.disabled=false;
@@ -312,16 +270,15 @@ async function loadApp(user){
   const{data,error}=await db.from('profiles').select('*').eq('id',user.id).maybeSingle();
   
   if(!error && data && data.role === 'admin') {
-      me=data;
-      $('logoutBtn').classList.remove('hide');
+      me=data; $('logoutBtn').classList.remove('hide');
       showScreen('adminScreen');loadAdminData();
       listen(loadAdminData,null);
       return;
   }
 
-  if(error||!data){alert('تعذر تحميل حسابك، حاول مرة أخرى');await db.auth.signOut();return showScreen('authScreen');}
-  me=data;
-  $('logoutBtn').classList.remove('hide');
+  if(error||!data){alert('تعذر تحميل الحساب');await db.auth.signOut();return showScreen('authScreen');}
+  me=data; $('logoutBtn').classList.remove('hide');
+  
   if(me.role==='client'){
     showScreen('clientScreen');paintWallet();
     renderClientOrders();setTimeout(initClientMap,200);
@@ -331,13 +288,43 @@ async function loadApp(user){
     showScreen('driverScreen');paintWallet();
     renderDriverOrders();
     clearInterval(pollTimer);pollTimer=setInterval(renderDriverOrders,POLL_MS);
+    startTrackingLocation(); 
+  }
+}
+
+function startTrackingLocation() {
+  if ("geolocation" in navigator) {
+    watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        updateDriverLocationInDB(lat, lng);
+      },
+      (error) => console.log("GPS Error: " + error.message),
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+    );
+  }
+}
+
+async function updateDriverLocationInDB(lat, lng) {
+  if(!me || me.role !== 'driver') return;
+  await db.from('orders')
+    .update({ driver_lat: lat, driver_lng: lng })
+    .eq('driver_id', me.id)
+    .in('status', ['accepted', 'picked_up']);
+}
+
+function stopTrackingLocation() {
+  if (watchId !== null) {
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
   }
 }
 
 async function refreshMe(){ const{data}=await db.from('profiles').select('*').eq('id',me.id).maybeSingle(); if(data){me=data;paintWallet();} }
-function paintWallet(){ if(me.role==='driver'){ $('driverWallet').innerText=money(me.wallet_balance); $('walletHint').innerText=me.wallet_balance<0?'سالب = عمولة مستحقة للمنصة':''; } }
+function paintWallet(){ if(me.role==='driver'){ $('driverWallet').innerText=money(me.wallet_balance); } }
 function showScreen(id){ ['authScreen','clientScreen','driverScreen','adminScreen','approvalScreen'].forEach(s=>$(s).classList.add('hide')); $(id).classList.remove('hide'); }
-async function logout(){ stopTracking();clearInterval(pollTimer); await db.auth.signOut();location.reload(); }
+async function logout(){ stopTrackingLocation(); clearInterval(pollTimer); await db.auth.signOut();location.reload(); }
 
 function listen(rerender,filter){
   if(mainChannel)db.removeChannel(mainChannel);
@@ -349,12 +336,14 @@ function listen(rerender,filter){
         known[o.id]=o.status; known[o.id+'_neg']=o.negotiation_status;
         rerender();
       },400);
-      if (Notification.permission === "granted") { new Notification("مسار - تحديث جديد", { body: "هناك تحديث في الطلبات، افتح التطبيق للتفاصيل.", icon: "https://cdn-icons-png.flaticon.com/512/7104/7104020.png" }); }
-    }else if(live[o.id])setDriverMarker(live[o.id],o);
+    }else if(live[o.id]) setDriverMarker(live[o.id],o); 
   }).subscribe();
 }
 
+// === دوال الخريطة والمسار ===
 let map=null,mk={pickup:null,dropoff:null},pos={pickup:null,dropoff:null},pickMode='pickup';
+let routeControls = {}; // لتخزين المسارات عشان منعملهاش كل شوية
+
 function initClientMap(){
   if(map){map.remove();map=null;}
   mk={pickup:null,dropoff:null};pos={pickup:null,dropoff:null};
@@ -363,7 +352,7 @@ function initClientMap(){
   map.on('click',e=>{
     const k=pickMode;pos[k]=[e.latlng.lat,e.latlng.lng];
     if(mk[k])mk[k].setLatLng(e.latlng);
-    else mk[k]=L.marker(e.latlng,{draggable:true}).addTo(map).bindPopup(k==='pickup'?'التحميل':'التسليم');
+    else mk[k]=L.marker(e.latlng,{draggable:true}).addTo(map);
     mk[k].on('dragend',ev=>{pos[k]=[ev.target.getLatLng().lat,ev.target.getLatLng().lng];updateEstimate();});
     if(k==='pickup'&&!pos.dropoff)setPickMode('dropoff');
     updateEstimate();
@@ -371,12 +360,14 @@ function initClientMap(){
   setPickMode('pickup');
 }
 function setPickMode(m){ pickMode=m; $('btnPick').className='flex-1 py-2 rounded-lg text-sm font-bold '+(m==='pickup'?'bg-yellow-500':'bg-gray-100'); $('btnDrop').className='flex-1 py-2 rounded-lg text-sm font-bold '+(m==='dropoff'?'bg-yellow-500':'bg-gray-100'); }
+
 async function updateEstimate(){
-  if(!pos.pickup||!pos.dropoff){$('estimate').innerText='اختار نقطة التحميل ثم التسليم على الخريطة';return;}
+  if(!pos.pickup||!pos.dropoff){$('estimate').innerText='اختار النقاط على الخريطة';return;}
   try{ const p=await rpc('estimate_price',{a1:pos.pickup[0],o1:pos.pickup[1],a2:pos.dropoff[0],o2:pos.dropoff[1],v:$('vehicleType').value}); $('estimate').innerText='السعر التقديري: '+money(p); }catch(e){$('estimate').innerText='';}
 }
+
 async function searchAddress(type) {
-  const address = $(type).value.trim(); if(!address) return alert('اكتب العنوان الأول');
+  const address = $(type).value.trim(); if(!address) return alert('اكتب العنوان');
   try {
     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address + ' مصر')}&limit=1`);
     const data = await res.json();
@@ -384,32 +375,74 @@ async function searchAddress(type) {
       const lat = parseFloat(data[0].lat); const lng = parseFloat(data[0].lon);
       pos[type] = [lat, lng];
       if(mk[type]) mk[type].setLatLng([lat, lng]);
-      else mk[type] = L.marker([lat, lng], {draggable:true}).addTo(map).bindPopup(type==='pickup'?'التحميل':'التسليم');
+      else mk[type] = L.marker([lat, lng], {draggable:true}).addTo(map);
       map.setView([lat, lng], 14); updateEstimate();
-    } else { alert('ملقيتش العنوان ده، جرب تكتبه بشكل أوضح أو حدده إيدك على الخريطة'); }
-  } catch(e) { alert('حصل خطأ في البحث، جرب تاني'); }
+    } else { alert('ملقيتش العنوان'); }
+  } catch(e) { alert('خطأ في البحث'); }
+}
+
+// دالة رسم المسار (تستخدم Leaflet Routing Machine)
+function drawRouteMap(containerId, lat1, lng1, lat2, lng2, driverLat=null, driverLng=null) {
+  const el = $(containerId);
+  if(!el) return;
+
+  // لو الخريطة موجودة بالفعل، منعملهاش تاني
+  if (routeControls[containerId]) return;
+
+  const m = L.map(el).setView([lat1, lng1], 11);
+  L.tileLayer(TILE,{attribution:'© OpenStreetMap'}).addTo(m);
+
+  // إضافة ماركر للتحميل والتسليم
+  L.marker([lat1, lng1]).addTo(m).bindPopup('التحميل');
+  L.marker([lat2, lng2]).addTo(m).bindPopup('التسليم');
+
+  // إضافة ماركر السائق لو موجود
+  if(driverLat) {
+      L.marker([driverLat, driverLng], {icon: truckIcon}).addTo(m).bindPopup('السائق');
+  }
+
+  // رسم خط السير وحساب المسافة
+  const routingControl = L.Routing.control({
+    waypoints: [L.latLng(lat1, lng1), L.latLng(lat2, lng2)],
+    routeWhileDragging: false,
+    addWaypoints: false,
+    fitSelectedRoutes: true,
+    show: false, // إخفاء التعليمات النصية
+    lineOptions: { styles: [{color: '#eab308', weight: 5}] } // لون الخط أصفر مسار
+  }).on('routesfound', function(e) {
+    const routes = e.routes;
+    const summary = routes[0].summary;
+    const distKm = (summary.totalDistance / 1000).toFixed(1); // المسافة بالكيلو
+    const timeMin = Math.round(summary.totalTime / 60); // الوقت بالدقايق
+
+    // تحديث النص اللي بيظهر فوق الخريطة
+    if($(containerId.replace('-map','-info'))) {
+       $(containerId.replace('-map','-info')).innerHTML = `المسافة: <span class="text-blue-600 font-bold">${distKm} كم</span> | الوقت المتوقع: <span class="text-green-600 font-bold">${timeMin} دقيقة</span>`;
+    }
+  }).addTo(m);
+
+  routeControls[containerId] = routingControl;
+  live[containerId] = { map: m, marker: null }; 
 }
 
 async function createOrder(){
   const pickup=$('pickup').value.trim(),dropoff=$('dropoff').value.trim(),cargo=$('cargoType').value;
   const weight=$('weight').value ? parseFloat($('weight').value) : 0;
   const desc=$('cargoDesc').value.trim();
-  
   let finalPrice = $('customPrice').value ? parseFloat($('customPrice').value) : 0;
+  
   if(finalPrice <= 0) {
-    if(!pos.pickup||!pos.dropoff) return alert('حدد التحميل والتسليم على الخريطة');
-    try { finalPrice = await rpc('estimate_price',{a1:pos.pickup[0],o1:pos.pickup[1],a2:pos.dropoff[0],o2:pos.dropoff[1],v:$('vehicleType').value}); } catch(e) { return alert('حدث خطأ في حساب السعر'); }
+    if(!pos.pickup||!pos.dropoff) return alert('حدد على الخريطة');
+    try { finalPrice = await rpc('estimate_price',{a1:pos.pickup[0],o1:pos.pickup[1],a2:pos.dropoff[0],o2:pos.dropoff[1],v:$('vehicleType').value}); } catch(e) { return alert('خطأ في السعر'); }
   }
-
-  if(!pickup||!dropoff)return alert('ادخل العناوين');
-  if(!pos.pickup||!pos.dropoff)return alert('حدد التحميل والتسليم على الخريطة');
+  if(!pickup||!dropoff || !pos.pickup||!pos.dropoff) return alert('ادخل العناوين وحدد الخريطة');
   
   const btn=$('orderBtn');btn.disabled=true;
   try{
     await rpc('create_order',{p_pickup:pickup,p_dropoff:dropoff,p_plat:pos.pickup[0],p_plng:pos.pickup[1],
       p_dlat:pos.dropoff[0],p_dlng:pos.dropoff[1],p_vehicle:$('vehicleType').value, p_cargo: cargo,
       p_weight: weight, p_desc: desc, p_pay:'cash', p_price: finalPrice});
-    alert('تم إرسال الطلب! هتلاقي كود التسليم في شحناتي.');
+    alert('تم إرسال الطلب!');
     $('pickup').value='';$('dropoff').value='';$('weight').value='';$('cargoDesc').value='';$('customPrice').value='';
     initClientMap();updateEstimate(); refreshMe();renderClientOrders();
   }catch(e){alert(e.message);}
@@ -417,162 +450,199 @@ async function createOrder(){
 }
 
 async function cancelOrder(id){ if(!confirm('إلغاء الطلب؟'))return; try{await rpc('cancel_order',{p_id:id});refreshMe();renderClientOrders();}catch(e){alert(e.message);} }
-async function submitRating(id,stars){ try{await rpc('rate_order',{p_id:id,p_stars:stars});alert('شكراً لتقييمك! ⭐');renderClientOrders();}catch(e){alert(e.message);} }
-async function acceptOffer(id){ if(!confirm('هل توافق على سعر السائق؟ سيتم تأكيد الطلب فوراً.'))return; try{await rpc('accept_driver_offer',{p_order_id:id});alert('تم قبول السائق!');renderClientOrders();}catch(e){alert(e.message);} }
+async function submitRating(id,stars){ try{await rpc('rate_order',{p_id:id,p_stars:stars});alert('تم التقييم');renderClientOrders();}catch(e){alert(e.message);} }
+async function acceptOffer(id){ if(!confirm('هل توافق على سعر السائق؟'))return; try{await rpc('accept_driver_offer',{p_order_id:id});alert('تم القبول');renderClientOrders();}catch(e){alert(e.message);} }
 
 async function renderClientOrders(){
   const{data:orders}=await db.from('orders').select('*').eq('client_id',me.id).order('created_at',{ascending:false});
   const{data:secrets}=await db.from('order_secrets').select('order_id,otp_code');
   const otps={};(secrets||[]).forEach(s=>otps[s.order_id]=s.otp_code);
-  known={}; const list=orders||[];
+  
+  known={};
+  const list=orders||[];
   $('clientOrders').innerHTML=list.map(o=>{
     known[o.id]=o.status; known[o.id+'_neg']=o.negotiation_status;
+    const active = o.status==='accepted'||o.status==='picked_up';
     const rating=o.status==='delivered'?(o.rating ?`<p class="text-sm text-yellow-600 font-bold mt-2">تقييمك: ${'★'.repeat(o.rating)}</p>`:`<div class="mt-3 bg-yellow-50 p-2 rounded-lg text-center"><p class="text-sm font-bold">قيّم السائق:</p><div class="flex justify-center gap-2" dir="ltr">${[1,2,3,4,5].map(s=>`<span class="star" onclick="submitRating('${esc(o.id)}',${s})">★</span>`).join('')}</div></div>`):'';
-    const otp=otps[o.id]?`<div class="mt-2 bg-red-50 border border-red-200 p-2 rounded-lg text-center"><p class="text-sm text-gray-600">كود التسليم (للسائق عند الاستلام فقط):</p><p class="text-xl font-black text-red-600 tracking-widest">${esc(otps[o.id])}</p></div>`:'';
+    const otp=otps[o.id]?`<div class="mt-2 bg-red-50 border border-red-200 p-2 rounded-lg text-center"><p class="text-sm text-gray-600">كود التسليم:</p><p class="text-xl font-black text-red-600 tracking-widest">${esc(otps[o.id])}</p></div>`:'';
     const cancel=(o.status==='pending'||o.status==='accepted')?`<button onclick="cancelOrder('${esc(o.id)}')" class="mt-2 w-full border border-red-300 text-red-600 py-1 rounded-lg text-sm">إلغاء الطلب</button>`:'';
     
-    let details = ''; if(o.weight > 0) details += `<p class="text-xs text-gray-500 mt-1">الوزن: ${o.weight} طن</p>`; if(o.cargo_description) details += `<p class="text-xs text-gray-500 mt-1">الوصف: ${esc(o.cargo_description)}</p>`; if(o.toll_fees > 0) details += `<p class="text-xs text-blue-600 font-bold mt-1">رسوم طريق/بوابات: ${money(o.toll_fees)}</p>`;
+    let details = ''; if(o.weight > 0) details += `<p class="text-xs text-gray-500 mt-1">الوزن: ${o.weight} طن</p>`; if(o.cargo_description) details += `<p class="text-xs text-gray-500 mt-1">الوصف: ${esc(o.cargo_description)}</p>`; if(o.toll_fees > 0) details += `<p class="text-xs text-blue-600 font-bold mt-1">رسوم بوابات: ${money(o.toll_fees)}</p>`;
     let total = o.price + (o.toll_fees || 0);
 
     let negotiationBox = '';
     if (o.negotiation_status === 'offered' && o.status === 'pending') {
-      negotiationBox = `<div class="mt-2 bg-blue-50 border border-blue-200 p-2 rounded-lg text-center">
-        <p class="text-sm font-bold text-blue-800 mb-1">السائق عرض سعر جديد: ${money(o.driver_offer)}</p>
-        <button onclick="acceptOffer('${o.id}')" class="w-full bg-blue-600 text-white font-bold py-1 rounded">✅ موافقة وتأكيد الطلب</button>
-      </div>`;
+      negotiationBox = `<div class="mt-2 bg-blue-50 border border-blue-200 p-2 rounded-lg text-center"><p class="text-sm font-bold text-blue-800 mb-1">السائق عرض: ${money(o.driver_offer)}</p><button onclick="acceptOffer('${o.id}')" class="w-full bg-blue-600 text-white font-bold py-1 rounded">✅ موافقة وتأكيد</button></div>`;
+    }
+
+    // تفاصيل الخريطة
+    let mapBox = '';
+    if(active) {
+        mapBox = `
+        <div class="mt-3 border-t pt-2">
+          <p id="client-info-${o.id}" class="text-sm font-bold text-center mb-1"></p>
+          <div id="client-map-${o.id}" class="w-full h-[200px] rounded-lg z-0 relative"></div>
+        </div>`;
     }
 
     return `<div class="card border-r-4 ${o.status==='pending'?'border-yellow-500':o.status==='delivered'?'border-green-500':o.status==='cancelled'?'border-gray-400':'border-blue-500'}">
       <div class="flex justify-between"><span class="font-bold">${esc(o.cargo_type)}</span><span class="text-xs bg-gray-100 px-2 py-1 rounded">${STATUS[o.status]||esc(o.status)}</span></div>
       <p class="text-sm mt-2 text-gray-600">📍 من: ${esc(o.pickup_address)}<br>🏁 إلى: ${esc(o.dropoff_address)}</p>
-      ${details} <p class="font-bold mt-2 text-lg">الإجمالي: ${money(total)}</p> <p class="text-xs text-gray-500 mb-2">(سعر الشحنة: ${money(o.price)} + رسوم: ${money(o.toll_fees||0)})</p>
+      ${details} <p class="font-bold mt-2 text-lg">الإجمالي: ${money(total)}</p>
+      ${mapBox}
       ${negotiationBox}
       <p class="text-sm text-blue-700 font-bold mb-2 mt-2">الدفع: كاش</p>
       ${otp}${rating}${cancel}
     </div>`;
   }).join('') || '<p class="text-sm text-gray-500">لا توجد طلبات</p>';
+  
+  // رسم خرائط المسار للطلبات النشطة
+  setTimeout(() => {
+    list.filter(o => o.status==='accepted'||o.status==='picked_up').forEach(o => {
+        drawRouteMap(`client-map-${o.id}`, o.pickup_lat, o.pickup_lng, o.dropoff_lat, o.dropoff_lng);
+    });
+  }, 100);
 }
 
 async function makeOffer(id) {
-  const price = prompt('أدخل السعر اللي إنت عايزه (بالجنيه):');
+  const price = prompt('أدخل السعر اللي إنت عايزه:');
   if (!price || isNaN(price)) return;
   try {
     await rpc('make_driver_offer', { p_order_id: id, p_offer_price: parseFloat(price) });
-    alert('تم إرسال عرضك للعميل، انتظر موافقته.');
+    alert('تم إرسال عرضك للعميل.');
     renderDriverOrders();
-  } catch(e) {
-    alert('خطأ: ' + e.message);
-  }
+  } catch(e) { alert('خطأ: ' + e.message); }
 }
 
+// === شاشة السائق ===
 async function renderDriverOrders(){
   const{data:myOrders}=await db.from('orders').select('*').eq('driver_id',me.id).order('created_at',{ascending:false});
   const{data:pend}=await db.from('orders').select('*').eq('status','pending').is('driver_id',null);
   const allOrders=myOrders||[];
+  
   if($('driverMyOrders')){
     $('driverMyOrders').innerHTML=allOrders.map(o=>{
       let actionBtn='';
-      if(o.status==='accepted') actionBtn=`<button onclick="pickupOrder('${o.id}')" class="mt-2 w-full bg-blue-500 text-white py-2 rounded text-sm font-bold shadow mb-2">📦 تأكيد الاستلام</button><button onclick="addTollFee('${o.id}')" class="w-full bg-gray-700 text-white py-1 rounded text-xs mb-2">➕ إضافة رسوم كارتة/بوابات</button>`;
-      else if(o.status==='picked_up') actionBtn=`<button onclick="deliverOrder('${o.id}')" class="mt-2 w-full bg-green-500 text-white py-2 rounded text-sm font-bold shadow mb-2">✅ تسليم الشحنة</button><button onclick="addTollFee('${o.id}')" class="w-full bg-gray-700 text-white py-1 rounded text-xs mb-2">➕ إضافة رسوم كارتة/بوابات</button>`;
-      else if(o.status==='delivered') actionBtn=`<button onclick="showReceipt('${o.id}')" class="mt-2 w-full bg-gray-800 text-white text-xs py-2 rounded">📄 عرض إيصال التسليم</button>`;
-      let details = ''; if(o.weight > 0) details += `<p class="text-xs text-gray-500 mt-1">الوزن: ${o.weight} طن</p>`; if(o.cargo_description) details += `<p class="text-xs text-gray-500 mt-1">الوصف: ${esc(o.cargo_description)}</p>`; if(o.toll_fees > 0) details += `<p class="text-xs text-blue-600 font-bold mt-1">رسوم طريق: ${money(o.toll_fees)}</p>`;
+      if(o.status==='accepted') actionBtn=`<button onclick="pickupOrder('${o.id}')" class="mt-2 w-full bg-blue-500 text-white py-2 rounded text-sm font-bold shadow mb-2">📦 تأكيد الاستلام</button><button onclick="addTollFee('${o.id}')" class="w-full bg-gray-700 text-white py-1 rounded text-xs mb-2">➕ إضافة رسوم كارتة</button>`;
+      else if(o.status==='picked_up') actionBtn=`<button onclick="deliverOrder('${o.id}')" class="mt-2 w-full bg-green-500 text-white py-2 rounded text-sm font-bold shadow mb-2">✅ تسليم الشحنة</button><button onclick="addTollFee('${o.id}')" class="w-full bg-gray-700 text-white py-1 rounded text-xs mb-2">➕ إضافة رسوم كارتة</button>`;
+      else if(o.status==='delivered') actionBtn=`<button onclick="showReceipt('${o.id}')" class="mt-2 w-full bg-gray-800 text-white text-xs py-2 rounded">📄 إيصال التسليم</button>`;
+      
+      let details = ''; if(o.weight > 0) details += `<p class="text-xs text-gray-500 mt-1">الوزن: ${o.weight} طن</p>`; if(o.cargo_description) details += `<p class="text-xs text-gray-500 mt-1">الوصف: ${esc(o.cargo_description)}</p>`; if(o.toll_fees > 0) details += `<p class="text-xs text-blue-600 font-bold mt-1">رسوم: ${money(o.toll_fees)}</p>`;
+      
+      let mapBox = '';
+      if(o.status==='accepted'||o.status==='picked_up') {
+          mapBox = `
+          <div class="mt-3 border-t pt-2">
+             <p id="driver-info-${o.id}" class="text-sm font-bold text-center mb-1"></p>
+             <div id="driver-map-${o.id}" class="w-full h-[200px] rounded-lg z-0 relative"></div>
+          </div>`;
+      }
+
       return `<div class="card border-r-4 ${o.status==='delivered'?'border-green-500':'border-blue-500'}">
         <div class="flex justify-between"><span class="font-bold">${esc(o.cargo_type)}</span><span class="text-xs bg-gray-100 px-2 py-1 rounded">${STATUS[o.status]||esc(o.status)}</span></div>
         <p class="text-sm mt-2 text-gray-600">📍 من: ${esc(o.pickup_address)}<br>🏁 إلى: ${esc(o.dropoff_address)}</p>
         ${details} <p class="font-bold mt-2">سعر الشحنة: ${money(o.price)} + (بوابات: ${money(o.toll_fees||0)})</p>
+        ${mapBox}
         ${actionBtn}
       </div>`;
-    }).join('') || '<p class="text-sm text-gray-500">لا توجد رحلات حالية</p>';
+    }).join('') || '<p class="text-sm text-gray-500">لا توجد رحلات</p>';
+    
+    // رسم خرائط المسار للسائق للطلبات المقبولة
+    setTimeout(() => {
+        allOrders.filter(o => o.status==='accepted'||o.status==='picked_up').forEach(o => {
+            drawRouteMap(`driver-map-${o.id}`, o.pickup_lat, o.pickup_lng, o.dropoff_lat, o.dropoff_lng, o.driver_lat, o.driver_lng);
+        });
+    }, 100);
   }
+
   if($('driverPendingOrders')){
     $('driverPendingOrders').innerHTML=(pend||[]).map(o=>{
       let details = ''; if(o.weight > 0) details += `<p class="text-xs text-gray-500 mt-1">الوزن: ${o.weight} طن</p>`; if(o.cargo_description) details += `<p class="text-xs text-gray-500 mt-1">الوصف: ${esc(o.cargo_description)}</p>`;
       
       let offerBtn = '';
       if (o.negotiation_status === 'offered') {
-         if (o.offered_by_driver_id === me.id) {
-            offerBtn = `<p class="text-sm font-bold text-blue-600 text-center mt-2">أنت عرضت سعر ${money(o.driver_offer)} (في انتظار العميل)</p>`;
-         } else {
-            offerBtn = `<p class="text-sm font-bold text-gray-500 text-center mt-2">سائق آخر عرض سعر (في انتظار العميل)</p>`;
-         }
+         if (o.offered_by_driver_id === me.id) offerBtn = `<p class="text-sm font-bold text-blue-600 text-center mt-2">عرضت سعر ${money(o.driver_offer)}</p>`;
+         else offerBtn = `<p class="text-sm font-bold text-gray-500 text-center mt-2">سائق آخر عرض سعر</p>`;
       } else {
-         offerBtn = `<button onclick="makeOffer('${o.id}')" class="mt-2 w-full border border-blue-500 text-blue-600 font-bold py-1 rounded text-sm shadow mb-1">💬 تقديم عرض سعر</button>`;
+         offerBtn = `<button onclick="makeOffer('${o.id}')" class="mt-2 w-full border border-blue-500 text-blue-600 font-bold py-1 rounded text-sm mb-1">💬 تقديم عرض سعر</button>`;
       }
 
-      return `
-      <div class="card border-r-4 border-yellow-500">
+      return `<div class="card border-r-4 border-yellow-500">
         <div class="flex justify-between"><span class="font-bold">${esc(o.cargo_type)}</span><span class="text-xs bg-gray-100 px-2 py-1 rounded">انتظار</span></div>
         <p class="text-sm mt-2 text-gray-600">📍 من: ${esc(o.pickup_address)}<br>🏁 إلى: ${esc(o.dropoff_address)}</p>
-        ${details} <p class="font-bold mt-2 text-green-700">السعر المطلوب: ${money(o.price)}</p>
-        <button onclick="acceptOrder('${o.id}')" class="mt-2 w-full bg-yellow-500 font-bold py-2 rounded text-sm shadow">قبول الطلب فوراً</button>
+        ${details} <p class="font-bold mt-2 text-green-700">السعر: ${money(o.price)}</p>
+        
+        <button onclick="showPendingRoute('${o.id}', ${o.pickup_lat}, ${o.pickup_lng}, ${o.dropoff_lat}, ${o.dropoff_lng})" class="mt-2 w-full bg-gray-200 text-black font-bold py-1 rounded text-sm mb-1">📍 عرض المسار والمسافة</button>
+        <div id="pending-map-container-${o.id}" class="hidden mt-2">
+            <p id="pending-info-${o.id}" class="text-sm font-bold text-center mb-1"></p>
+            <div id="pending-map-${o.id}" class="w-full h-[200px] rounded-lg z-0 relative"></div>
+        </div>
+        
+        <button onclick="acceptOrder('${o.id}')" class="mt-2 w-full bg-yellow-500 font-bold py-2 rounded text-sm shadow">قبول فوري</button>
         ${offerBtn}
-      </div>
-    `}).join('') || '<p class="text-sm text-gray-500">لا توجد طلبات متاحة</p>';
+      </div>`;
+    }).join('') || '<p class="text-sm text-gray-500">لا توجد طلبات متاحة</p>';
   }
 }
 
-async function acceptOrder(id){ try{ const res = await rpc('accept_order',{p_id:id}); if(res){alert('تم قبول الطلب!');renderDriverOrders();} else alert('عذراً، تم قبول الطلب بواسطة سائق آخر.'); }catch(e){alert(e.message);} }
-async function pickupOrder(id){ if(!confirm('هل قمت باستلام الشحنة من العميل؟')) return; try{ await rpc('pickup_order', { p_order_id: id }); alert('تم تأكيد الاستلام!'); renderDriverOrders(); } catch(e){ alert('خطأ: ' + e.message); } }
-async function deliverOrder(id){ const otp = prompt('أدخل كود التسليم من العميل:'); if(!otp) return; try{ await rpc('verify_delivery', { p_order_id: id, p_otp: otp }); alert('✅ تم التسليم بنجاح!'); renderDriverOrders(); refreshMe(); } catch(e){ alert('كود خاطئ أو حدث خطأ: ' + e.message); } }
-async function addTollFee(orderId) { const amount = prompt('أدخل رسوم البوابات/الكارتة التي دفعتها (بالجنيه):'); if (amount === null || amount === '' || isNaN(amount)) return; try { await rpc('add_toll_fees', { p_order_id: orderId, p_amount: parseFloat(amount) }); alert('تم إضافة الرسوم بنجاح.'); renderDriverOrders(); } catch(e) { alert('خطأ: ' + e.message); } }
-async function showReceipt(orderId){ try{ const otp=await rpc('get_order_otp',{p_order_id:orderId}); document.getElementById('receiptOtp').innerText = otp; document.getElementById('receiptModal').classList.remove('hide'); }catch(e){alert('خطأ: '+e.message);} }
-function enableSound(){ sound=true; $('soundBtn').innerText='🔊 الصوت شغال'; }
-function stopTracking(){}
+function showPendingRoute(id, lat1, lng1, lat2, lng2) {
+    const container = $(`pending-map-container-${id}`);
+    container.classList.remove('hidden');
+    drawRouteMap(`pending-map-${id}`, lat1, lng1, lat2, lng2);
+}
 
+async function acceptOrder(id){ try{ const res = await rpc('accept_order',{p_id:id}); if(res){alert('تم القبول!');renderDriverOrders();} else alert('تم قبوله بواسطة سائق آخر.'); }catch(e){alert(e.message);} }
+async function pickupOrder(id){ if(!confirm('استلمت الشحنة؟')) return; try{ await rpc('pickup_order', { p_order_id: id }); alert('تم الاستلام!'); renderDriverOrders(); } catch(e){ alert('خطأ'); } }
+async function deliverOrder(id){ const otp = prompt('أدخل كود التسليم:'); if(!otp) return; try{ await rpc('verify_delivery', { p_order_id: id, p_otp: otp }); alert('تم التسليم!'); renderDriverOrders(); refreshMe(); } catch(e){ alert('كود خاطئ'); } }
+async function addTollFee(orderId) { const amount = prompt('رسوم البوابات:'); if (amount === null || amount === '' || isNaN(amount)) return; try { await rpc('add_toll_fees', { p_order_id: orderId, p_amount: parseFloat(amount) }); alert('تم الإضافة'); renderDriverOrders(); } catch(e) { alert('خطأ'); } }
+async function showReceipt(orderId){ try{ const otp=await rpc('get_order_otp',{p_order_id:orderId}); alert('كود التسليم: ' + otp); }catch(e){alert('خطأ');} }
+
+// === دوال لوحة الإدارة ===
 async function loadAdminData(){
   const{data:os}=await db.from('orders').select('*').order('created_at',{ascending:false});
   const{data:users}=await db.from('profiles').select('*');
   
-  if($('adminOrdersList')){
-    $('adminOrdersList').innerHTML=(os||[]).map(o=>{
-      let details = ''; if(o.weight > 0) details += `<p class="text-xs text-gray-500">الوزن: ${o.weight} طن</p>`; if(o.cargo_description) details += `<p class="text-xs text-gray-500">وصف: ${esc(o.cargo_description)}</p>`; if(o.toll_fees > 0) details += `<p class="text-xs text-blue-600 font-bold">بوابات: ${money(o.toll_fees)}</p>`;
-      return `
-      <div class="card border-r-4 border-gray-300 mb-2">
-        <div class="flex justify-between font-bold"><span>${esc(o.cargo_type)}</span><span>${money(o.price + (o.toll_fees||0))}</span></div>
-        ${details} <p class="text-xs text-gray-500">الحالة: ${STATUS[o.status]||esc(o.status)}</p>
-        ${o.status==='delivered'?`<button onclick="showReceipt('${o.id}')" class="text-xs text-blue-600 underline mt-2 block">📄 عرض إيصال التسليم</button>`:''}
-      </div>`;
-    }).join('');
+  const activeOrders = os ? os.filter(o => o.status === 'accepted' || o.status === 'picked_up') : [];
+  
+  // 1. رسم خرائط التتبع النشطة
+  if($('adminLiveTracking')) {
+    $('adminLiveTracking').innerHTML = activeOrders.map(o => `
+      <div class="card mb-2">
+        <p class="font-bold text-sm">شحنة ${esc(o.cargo_type)} - ${esc(o.pickup_address)}</p>
+        <p id="admin-info-${o.id}" class="text-sm font-bold text-center mb-1"></p>
+        <div id="admin-map-${o.id}" class="w-full h-[200px] rounded-lg z-0 relative"></div>
+      </div>
+    `).join('') || '<p class="text-sm text-gray-500">لا توجد شحنات نشطة حالياً</p>';
+    
+    setTimeout(() => {
+      activeOrders.forEach(o => {
+        drawRouteMap(`admin-map-${o.id}`, o.pickup_lat, o.pickup_lng, o.dropoff_lat, o.dropoff_lng, o.driver_lat, o.driver_lng);
+      });
+    }, 100);
   }
   
+  // 2. قائمة المستخدمين
   if($('adminUsersList')){
     $('adminUsersList').innerHTML=(users||[]).map(u=>`
       <div class="card flex justify-between items-center mb-2">
         <div>
           <p class="font-bold text-sm">${esc(u.full_name)} (${u.role})</p>
-          <p class="text-xs text-gray-500">${esc(u.phone)} — رصيد: ${money(u.wallet_balance)}</p>
-          ${u.role === 'driver' ? `<p class="text-xs text-blue-700 font-bold mt-1">🚚 العربية: ${esc(u.vehicle_type) || 'غير مسجل'} | لوحة: ${esc(u.plate_number) || 'غير مسجل'}</p>` : ''}
+          <p class="text-xs text-gray-500">${esc(u.phone)}</p>
+          ${u.role === 'driver' ? `<p class="text-xs text-blue-700 font-bold mt-1">🚚 ${esc(u.vehicle_type)} | لوحة: ${esc(u.plate_number)}</p>` : ''}
         </div>
         <div class="flex flex-col gap-1">
           ${u.role==='driver'&&!u.approved?`<button onclick="approveDriver('${u.id}')" class="bg-green-500 text-white text-xs px-2 py-1 rounded">✅ موافقة</button>`:''}
-          <button onclick="adjustWallet('${u.id}')" class="bg-gray-200 text-xs px-2 py-1 rounded">تعديل الرصيد</button>
-          ${u.role !== 'admin' ? `<button onclick="deleteUserAccount('${u.id}', '${esc(u.full_name)}')" class="bg-red-600 text-white text-xs px-2 py-1 rounded mt-1">❌ حذف</button>` : ''}
         </div>
       </div>
     `).join('');
   }
 }
 
-async function approveDriver(id){ try{ await rpc('approve_driver',{p_id:id}); alert('تم تفعيل السائق'); loadAdminData(); }catch(e){alert(e.message);} }
-async function adjustWallet(id){ const a=prompt('أدخل المبلغ (موجب للإضافة، سالب للخصم):'); if(!a)return; try{ await rpc('admin_adjust_wallet',{p_id:id,p_amount:Number(a)}); loadAdminData(); }catch(e){alert(e.message);} }
-
-async function deleteUserAccount(id, name) {
-  if(!confirm(`هل أنت متأكد من حذف حساب (${name}) نهائياً؟ لا يمكن التراجع عن هذه الخطوة!`)) return;
-  try {
-    await rpc('delete_user_account', { p_user_id: id });
-    alert('تم حذف الحساب بنجاح.');
-    loadAdminData();
-  } catch (e) {
-    alert('حدث خطأ أثناء الحذف: ' + e.message);
-  }
-}
+async function approveDriver(id){ try{ await rpc('approve_driver',{p_id:id}); alert('تم التفعيل'); loadAdminData(); }catch(e){alert(e.message);} }
 
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; const banner=document.getElementById('installBanner'); if(banner) banner.classList.remove('hide'); });
-function installApp() { if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => { deferredPrompt=null; document.getElementById('installBanner').classList.add('hide'); }); } else { alert('لتثبيت التطبيق على الآيفون:\n1. اضغط على زر المشاركة.\n2. اختار "إضافة إلى الشاشة الرئيسية".'); } }
-const isIos=()=>/iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()); const isInStandaloneMode=()=>('standalone' in window.navigator)&&(window.navigator.standalone);
-if (isIos() && !isInStandaloneMode()) { const banner=document.getElementById('installBanner'); if(banner){ banner.classList.remove('hide'); document.getElementById('installDesc').innerText='اضغط مشاركة ثم "إضافة للشاشة"'; document.getElementById('btnInstall').innerText='طريقة التثبيت'; } }
-window.addEventListener('appinstalled', () => { document.getElementById('installBanner').classList.add('hide'); });
+function installApp() { if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => { deferredPrompt=null; document.getElementById('installBanner').classList.add('hide'); }); } else { alert('من المتصفح: اضغط مشاركة ثم إضافة للشاشة الرئيسية'); } }
 
 setAuthMode('login');
 db.auth.getSession().then(({data:{session}})=>{ if(session) loadApp(session.user); else showScreen('authScreen'); });
