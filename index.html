@@ -28,6 +28,11 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
 .toast { background: #1f2937; color: white; padding: 15px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: flex; justify-content: space-between; align-items: center; border-right: 5px solid #eab308; animation: slideDown 0.3s ease-out; }
 @keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 .toast-close { cursor: pointer; color: #9ca3af; font-weight: bold; font-size: 20px; }
+
+/* تنسيقات الإحصائيات التفاعلية */
+.stat-card { cursor: pointer; transition: transform 0.1s; }
+.stat-card:active { transform: scale(0.95); }
+.stat-active { ring: 2px solid #eab308; box-shadow: 0 0 0 2px #eab308; }
 </style>
 </head>
 <body>
@@ -181,17 +186,17 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
   </div>
 
   <!-- قسم الإحصائيات -->
-  <h3 class="font-bold text-lg mb-2">إحصائيات التطبيق 📊</h3>
+  <h3 class="font-bold text-lg mb-2">إحصائيات التطبيق 📊 (اضغط للفلترة)</h3>
   <div id="adminStats" class="grid grid-cols-2 gap-2 mb-6"></div>
+
+  <!-- سجل كل الطلبات -->
+  <h3 class="font-bold text-lg mb-2 mt-6" id="ordersLogTitle">سجل الطلبات 📜</h3>
+  <div id="adminAllOrders" class="mb-6 max-h-96 overflow-y-auto border p-2 rounded-xl bg-gray-50"></div>
 
   <h3 class="font-bold text-lg mb-2 mt-6">تتبع الشحنات النشطة 📍</h3>
   <div id="adminLiveTracking" class="mb-6"></div>
 
-  <!-- سجل كل الطلبات -->
-  <h3 class="font-bold text-lg mb-2 mt-6">سجل كل الطلبات 📜</h3>
-  <div id="adminAllOrders" class="mb-6 max-h-96 overflow-y-auto border p-2 rounded-xl bg-gray-50"></div>
-
-  <h3 class="font-bold text-lg mb-2">المستخدمين</h3>
+  <h3 class="font-bold text-lg mb-2">إدارة المستخدمين</h3>
   <div id="adminUsersList" class="mb-6"></div>
 </div>
 </main>
@@ -224,6 +229,7 @@ let live={},known={},mainChannel=null,debounce=null;
 let isAdminLogin = false;
 let watchId = null; 
 let lastLocationUpdate = 0; 
+let currentAdminFilter = 'all'; // متغير للفلترة
 
 // === الإشعارات ===
 function requestNotificationPermission() {
@@ -261,11 +267,9 @@ function playBeep() {
 
 function showToast(title, message) {
     playBeep();
-    // إشعار المتصفح (لو مفعل)
     if (Notification.permission === "granted") {
-        new Notification(title, { body: message, icon: 'https://cdn-icons-png.flaticon.com/512/854/854866.png' });
+        new Notification(title, { body: message });
     }
-    // إشعار داخلي
     const container = $('toastContainer');
     const toast = document.createElement('div');
     toast.className = 'toast';
@@ -393,7 +397,6 @@ async function loadApp(user){
   }
 }
 
-// === إشعارات الإدارة ===
 function listenAdminNotifications() {
     db.channel('admin_orders_notif')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, payload => {
@@ -583,7 +586,6 @@ async function acceptOffer(id){ if(!confirm('هل توافق على سعر ال�
 async function renderClientOrders(){
   clearAllMaps(); 
 
-  // جلب بيانات الطلبات مع رقم موبايل السائق
   const{data:orders}=await db.from('orders').select('*, driver:profiles!orders_driver_id_fkey(phone)').eq('client_id',me.id).order('created_at',{ascending:false});
   const{data:secrets}=await db.from('order_secrets').select('order_id,otp_code');
   const otps={};(secrets||[]).forEach(s=>otps[s.order_id]=s.otp_code);
@@ -614,7 +616,6 @@ async function renderClientOrders(){
         </div>`;
     }
 
-    // زرار واتساب السائق
     let waBtn = '';
     if(active && o.driver && o.driver.phone) {
         const waLink = `https://wa.me/2${o.driver.phone}?text=${encodeURIComponent('مرحباً، أنا عميلك في تطبيق مسار بخصوص شحنة ' + o.cargo_type + ' من ' + o.pickup_address + ' إلى ' + o.dropoff_address)}`;
@@ -654,7 +655,6 @@ async function makeOffer(id) {
 async function renderDriverOrders(){
   clearAllMaps(); 
 
-  // جلب بيانات الطلبات مع رقم موبايل العميل
   const{data:myOrders}=await db.from('orders').select('*, client:profiles!orders_client_id_fkey(phone)').eq('driver_id',me.id).order('created_at',{ascending:false});
   const{data:pend}=await db.from('orders').select('*').eq('status','pending').is('driver_id',null);
   const allOrders=myOrders||[];
@@ -677,7 +677,6 @@ async function renderDriverOrders(){
           </div>`;
       }
 
-      // زرار واتساب العميل
       let waBtn = '';
       if((o.status==='accepted' || o.status==='picked_up') && o.client && o.client.phone) {
           const waLink = `https://wa.me/2${o.client.phone}?text=${encodeURIComponent('مرحباً، أنا السائق في تطبيق مسار، أنا في طريقي لاستلام الشحنة الخاصة بك')}`;
@@ -744,10 +743,16 @@ async function addTollFee(orderId) { const amount = prompt('رسوم البوا�
 async function showReceipt(orderId){ try{ const otp=await rpc('get_order_otp',{p_order_id:orderId}); alert('كود التسليم: ' + otp); }catch(e){alert('خطأ');} }
 
 // === دوال لوحة الإدارة ===
+function filterAdminOrders(status) {
+  currentAdminFilter = status;
+  loadAdminData();
+}
+
 async function loadAdminData(){
   clearAllMaps(); 
   
-  const{data:os}=await db.from('orders').select('*').order('created_at',{ascending:false});
+  // جلب الطلبات مع بيانات العميل والسواق
+  const{data:os}=await db.from('orders').select('*, client:profiles!orders_client_id_fkey(full_name, phone), driver:profiles!orders_driver_id_fkey(full_name, phone)').order('created_at',{ascending:false});
   const{data:users}=await db.from('profiles').select('*');
   
   const allOrders = os || [];
@@ -764,19 +769,19 @@ async function loadAdminData(){
 
   if($('adminStats')) {
     $('adminStats').innerHTML = `
-      <div class="bg-white p-3 rounded-xl shadow text-center border-t-4 border-blue-500">
+      <div onclick="filterAdminOrders('all')" class="stat-card bg-white p-3 rounded-xl shadow text-center border-t-4 border-blue-500 ${currentAdminFilter === 'all' ? 'stat-active' : ''}">
         <p class="text-xs text-gray-500">إجمالي الطلبات</p>
         <p class="text-xl font-bold text-gray-800">${allOrders.length}</p>
       </div>
-      <div class="bg-white p-3 rounded-xl shadow text-center border-t-4 border-green-500">
+      <div onclick="filterAdminOrders('delivered')" class="stat-card bg-white p-3 rounded-xl shadow text-center border-t-4 border-green-500 ${currentAdminFilter === 'delivered' ? 'stat-active' : ''}">
         <p class="text-xs text-gray-500">تم التسليم</p>
         <p class="text-xl font-bold text-green-600">${deliveredOrders.length}</p>
       </div>
-      <div class="bg-white p-3 rounded-xl shadow text-center border-t-4 border-yellow-500">
+      <div onclick="filterAdminOrders('pending')" class="stat-card bg-white p-3 rounded-xl shadow text-center border-t-4 border-yellow-500 ${currentAdminFilter === 'pending' ? 'stat-active' : ''}">
         <p class="text-xs text-gray-500">في الانتظار</p>
         <p class="text-xl font-bold text-yellow-600">${pendingOrders.length}</p>
       </div>
-      <div class="bg-white p-3 rounded-xl shadow text-center border-t-4 border-blue-400">
+      <div onclick="filterAdminOrders('active')" class="stat-card bg-white p-3 rounded-xl shadow text-center border-t-4 border-blue-400 ${currentAdminFilter === 'active' ? 'stat-active' : ''}">
         <p class="text-xs text-gray-500">في الطريق</p>
         <p class="text-xl font-bold text-blue-500">${activeOrders.length}</p>
       </div>
@@ -791,21 +796,43 @@ async function loadAdminData(){
     `;
   }
 
+  // فلترة الطلبات بناءً على الاختيار
+  let filteredOrders = allOrders;
+  let filterTitle = "سجل كل الطلبات 📜";
+  if (currentAdminFilter === 'pending') { filteredOrders = pendingOrders; filterTitle = "سجل الطلبات (في الانتظار) 📜"; }
+  else if (currentAdminFilter === 'delivered') { filteredOrders = deliveredOrders; filterTitle = "سجل الطلبات (تم التسليم) 📜"; }
+  else if (currentAdminFilter === 'active') { filteredOrders = activeOrders; filterTitle = "سجل الطلبات (في الطريق) 📜"; }
+  
+  if($('ordersLogTitle')) $('ordersLogTitle').innerText = filterTitle;
+
   if($('adminAllOrders')) {
-    $('adminAllOrders').innerHTML = allOrders.map(o => {
+    $('adminAllOrders').innerHTML = filteredOrders.map(o => {
       let statusColor = o.status === 'delivered' ? 'text-green-600' : o.status === 'pending' ? 'text-yellow-600' : o.status === 'cancelled' ? 'text-red-600' : 'text-blue-600';
       let bgBorder = o.status === 'delivered' ? 'border-green-500' : o.status === 'pending' ? 'border-yellow-500' : o.status === 'cancelled' ? 'border-red-500' : 'border-blue-500';
+      
+      const clientName = o.client ? o.client.full_name : 'غير معروف';
+      const clientPhone = o.client ? o.client.phone : '';
+      const driverName = o.driver ? o.driver.full_name : 'لم يتم تعيين سائق';
+      const driverPhone = o.driver ? o.driver.phone : '';
+
+      let clientWA = clientPhone ? `<a href="https://wa.me/2${clientPhone}" target="_blank" class="text-green-600 hover:text-green-800"><svg class="w-4 h-4 inline" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.432 2.504 1.16 3.472l-.76 2.78 2.848-.75c.932.513 2.012.811 3.164.811 3.183 0 5.769-2.586 5.769-5.766 0-3.18-2.586-5.766-5.768-5.766zm3.656 8.196c-.149.419-.868.794-1.208.834-.34.04-.756.164-2.424-.544-2.012-.854-3.264-2.902-3.362-3.036-.098-.134-.792-1.055-.792-2.012 0-.958.499-1.428.678-1.624.179-.196.39-.245.52-.245.13 0 .261.004.373.008.116.004.272-.044.424.323.158.382.542 1.322.589 1.418.047.096.078.208.011.34-.067.132-.143.261-.276.41-.133.149-.275.313-.39.45-.115.137-.244.29-.11.535.134.245.597.986 1.28 1.596.877.786 1.612 1.032 1.868 1.164.256.132.404.11.553-.066.149-.176.636-.742.805-1.003.169-.261.338-.217.553-.134.215.083 1.366.644 1.6.761.234.117.39.176.448.276.057.099.057.572-.092.991z"/></svg></a>` : '';
+      let driverWA = driverPhone ? `<a href="https://wa.me/2${driverPhone}" target="_blank" class="text-green-600 hover:text-green-800"><svg class="w-4 h-4 inline" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.432 2.504 1.16 3.472l-.76 2.78 2.848-.75c.932.513 2.012.811 3.164.811 3.183 0 5.769-2.586 5.769-5.766 0-3.18-2.586-5.766-5.768-5.766zm3.656 8.196c-.149.419-.868.794-1.208.834-.34.04-.756.164-2.424-.544-2.012-.854-3.264-2.902-3.362-3.036-.098-.134-.792-1.055-.792-2.012 0-.958.499-1.428.678-1.624.179-.196.39-.245.52-.245.13 0 .261.004.373.008.116.004.272-.044.424.323.158.382.542 1.322.589 1.418.047.096.078.208.011.34-.067.132-.143.261-.276.41-.133.149-.275.313-.39.45-.115.137-.244.29-.11.535.134.245.597.986 1.28 1.596.877.786 1.612 1.032 1.868 1.164.256.132.404.11.553-.066.149-.176.636-.742.805-1.003.169-.261.338-.217.553-.134.215.083 1.366.644 1.6.761.234.117.39.176.448.276.057.099.057.572-.092.991z"/></svg></a>` : '';
+
       return `
         <div class="card mb-2 text-sm border-r-4 ${bgBorder}">
           <div class="flex justify-between font-bold mb-1">
             <span class="${statusColor}">${STATUS[o.status] || o.status}</span>
             <span>${money(Number(o.price) + Number(o.toll_fees || 0))}</span>
           </div>
-          <p class="text-gray-600">📍 من: ${esc(o.pickup_address)} <br>🏁 إلى: ${esc(o.dropoff_address)}</p>
-          <p class="text-xs text-gray-400 mt-1">التاريخ: ${new Date(o.created_at).toLocaleString('ar-EG')}</p>
+          <p class="text-gray-600 mb-1">📍 من: ${esc(o.pickup_address)} <br>🏁 إلى: ${esc(o.dropoff_address)}</p>
+          <div class="bg-gray-100 p-2 rounded text-xs mt-1">
+            <p><strong>العميل:</strong> ${esc(clientName)} ${clientPhone ? '('+esc(clientPhone)+')' : ''} ${clientWA}</p>
+            <p><strong>السائق:</strong> ${esc(driverName)} ${driverPhone ? '('+esc(driverPhone)+')' : ''} ${driverWA}</p>
+          </div>
+          <p class="text-xs text-gray-400 mt-2">التاريخ: ${new Date(o.created_at).toLocaleString('ar-EG')}</p>
         </div>
       `;
-    }).join('') || '<p class="text-sm text-gray-500">لا توجد طلبات مسجلة</p>';
+    }).join('') || '<p class="text-sm text-gray-500">لا توجد طلبات تطابق الفلتر المحدد</p>';
   }
   
   if($('adminLiveTracking')) {
@@ -827,13 +854,34 @@ async function loadAdminData(){
   
   if($('adminUsersList')){
     const allUsers = users || [];
+    const clients = allUsers.filter(u => u.role === 'client');
     const pendingDrivers = allUsers.filter(u => u.role === 'driver' && !u.approved);
-    const approvedUsers = allUsers.filter(u => u.role !== 'driver' || u.approved);
+    const approvedDrivers = allUsers.filter(u => u.role === 'driver' && u.approved);
 
     let html = '';
 
+    // قسم العملاء
+    html += `<h4 class="font-bold text-blue-700 mb-2 mt-4 text-sm">العملاء المسجلين (${clients.length})</h4>`;
+    if(clients.length > 0) {
+        html += clients.map(u => `
+          <div class="card flex justify-between items-center mb-2 border-r-4 border-blue-500">
+            <div>
+              <p class="font-bold text-sm">${esc(u.full_name)}</p>
+              <p class="text-xs text-gray-500">${esc(u.phone)}</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <a href="https://wa.me/2${u.phone}" target="_blank" class="bg-green-500 text-white text-xs px-2 py-1 rounded shadow font-bold">واتساب</a>
+              <button onclick="deleteUser('${u.id}', '${esc(u.full_name)}')" class="bg-red-500 text-white text-xs px-2 py-1 rounded">🗑️</button>
+            </div>
+          </div>
+        `).join('');
+    } else {
+        html += '<p class="text-xs text-gray-500 mb-4">لا يوجد عملاء مسجلين</p>';
+    }
+
+    // قسم السواقين في الانتظار
     if(pendingDrivers.length > 0) {
-      html += `<h4 class="font-bold text-red-600 mb-2 mt-4 text-sm">⚠️ سواقين في انتظار الموافقة (${pendingDrivers.length})</h4>`;
+      html += `<h4 class="font-bold text-red-600 mb-2 mt-6 text-sm">⚠️ سواقين في انتظار الموافقة (${pendingDrivers.length})</h4>`;
       html += pendingDrivers.map(u => `
         <div class="card flex justify-between items-center mb-2 border-r-4 border-red-500">
           <div>
@@ -849,17 +897,19 @@ async function loadAdminData(){
       `).join('');
     }
 
-    html += `<h4 class="font-bold text-gray-700 mb-2 mt-6 text-sm">المستخدمين المسجلين</h4>`;
-    html += approvedUsers.map(u => `
-      <div class="card flex justify-between items-center mb-2 opacity-80">
+    // قسم السواقين المفعلين
+    html += `<h4 class="font-bold text-gray-700 mb-2 mt-6 text-sm">السائقين المفعلين (${approvedDrivers.length})</h4>`;
+    html += approvedDrivers.map(u => `
+      <div class="card flex justify-between items-center mb-2 opacity-80 border-r-4 border-green-500">
         <div>
-          <p class="font-bold text-sm">${esc(u.full_name)} <span class="text-xs font-normal text-gray-500">(${u.role})</span></p>
+          <p class="font-bold text-sm">${esc(u.full_name)} <span class="text-xs font-normal text-gray-500">(سائق)</span></p>
           <p class="text-xs text-gray-500">${esc(u.phone)}</p>
-          ${u.role === 'driver' ? `<p class="text-xs text-blue-700 font-bold mt-1">🚚 ${esc(u.vehicle_type)} | لوحة: ${esc(u.plate_number)}</p>` : ''}
+          <p class="text-xs text-blue-700 font-bold mt-1">🚚 ${esc(u.vehicle_type)} | لوحة: ${esc(u.plate_number)}</p>
         </div>
         <div class="flex items-center gap-2">
-          ${u.approved ? '<span class="text-green-500 text-xs font-bold">✔️</span>' : ''}
-          <button onclick="deleteUser('${u.id}', '${esc(u.full_name)}')" class="bg-red-500 text-white text-xs px-2 py-1 rounded">🗑️ حذف</button>
+          <span class="text-green-500 text-xs font-bold">✔️</span>
+          <a href="https://wa.me/2${u.phone}" target="_blank" class="bg-green-500 text-white text-xs px-2 py-1 rounded shadow font-bold">واتساب</a>
+          <button onclick="deleteUser('${u.id}', '${esc(u.full_name)}')" class="bg-red-500 text-white text-xs px-2 py-1 rounded">🗑️</button>
         </div>
       </div>
     `).join('');
