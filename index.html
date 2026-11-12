@@ -21,11 +21,19 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
 .star{font-size:26px;cursor:pointer;color:#d1d5db}.star:hover{color:#f59e0b}
 .inp{width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:.5rem;margin-bottom:.5rem;background:#fff}
 .card{background:#fff;padding:1rem;border-radius:.75rem;box-shadow:0 1px 2px #0001;margin-bottom:.75rem}
-/* إخفاء تعليمات المسار النصية الطويلة */
 .leaflet-routing-container { display: none !important; }
+
+/* تنسيقات الإشعارات */
+#toastContainer { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 10000; display: flex; flex-direction: column; gap: 10px; width: 90%; max-width: 400px; }
+.toast { background: #1f2937; color: white; padding: 15px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: flex; justify-content: space-between; align-items: center; border-right: 5px solid #eab308; animation: slideDown 0.3s ease-out; }
+@keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.toast-close { cursor: pointer; color: #9ca3af; font-weight: bold; font-size: 20px; }
 </style>
 </head>
 <body>
+
+<!-- حاوية الإشعارات -->
+<div id="toastContainer"></div>
 
 <!-- شاشة التحميل -->
 <div id="loader" class="hide fixed inset-0 bg-black bg-opacity-50 z-[9999] flex justify-center items-center">
@@ -74,7 +82,7 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
     <input type="tel" id="phoneInput" placeholder="رقم الموبايل (مثال: 01012345678)" class="inp font-bold" dir="ltr" maxlength="11">
   </div>
 
-  <input type="password" id="password" placeholder="اكتب أي باسورد سهل تفتكره (مثال: 123456)" class="inp text-right" dir="rtl">
+  <input type="password" id="password" placeholder="اكتب أي باسورد سهل تفتكره" class="inp text-right" dir="rtl">
   
   <div id="regFields" class="hide">
     <select id="role" class="inp" onchange="$('driverFields').classList.toggle('hide',this.value!=='driver')">
@@ -167,11 +175,19 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
 <div id="adminScreen" class="hide">
   <div class="bg-gray-900 p-5 rounded-2xl mb-4 text-center">
     <h2 class="text-2xl font-bold text-yellow-500">لوحة تحكم الإدارة 🛡️</h2>
-    <button onclick="loadAdminData()" class="mt-2 bg-gray-700 text-white text-xs px-3 py-1 rounded">🔄 تحديث</button>
+    <button onclick="loadAdminData()" class="mt-2 bg-gray-700 text-white text-xs px-3 py-1 rounded">🔄 تحديث البيانات</button>
   </div>
-  
+
+  <!-- قسم الإحصائيات -->
+  <h3 class="font-bold text-lg mb-2">إحصائيات التطبيق 📊</h3>
+  <div id="adminStats" class="grid grid-cols-2 gap-2 mb-6"></div>
+
   <h3 class="font-bold text-lg mb-2 mt-6">تتبع الشحنات النشطة 📍</h3>
   <div id="adminLiveTracking" class="mb-6"></div>
+
+  <!-- سجل كل الطلبات -->
+  <h3 class="font-bold text-lg mb-2 mt-6">سجل كل الطلبات 📜</h3>
+  <div id="adminAllOrders" class="mb-6 max-h-96 overflow-y-auto border p-2 rounded-xl bg-gray-50"></div>
 
   <h3 class="font-bold text-lg mb-2">المستخدمين</h3>
   <div id="adminUsersList" class="mb-6"></div>
@@ -188,6 +204,7 @@ const SUPABASE_URL='https://jzcwocvkqbuhpactazus.supabase.co';
 const SUPABASE_KEY='sb_publishable_ndfcyfS3Mz90d5_E-LQnbg_FW-cyLsJ';
 const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
+const APP_COMMISSION_PERCENT = 0.05; // نسبة التطبيق 5% (غير الرقم ده لو عايز نسبة تانية)
 const WALLET_ENABLED=false;
 const WHATSAPP='201008781263';
 const POLL_MS=10000;
@@ -205,6 +222,39 @@ let live={},known={},mainChannel=null,debounce=null;
 let isAdminLogin = false;
 let watchId = null; 
 let lastLocationUpdate = 0; 
+
+// === نظام الإشعارات ===
+let audioCtx;
+function playBeep() {
+    try {
+        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(800, audioCtx.currentTime); // تردد الصوت
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.2); // مدة الصوت
+    } catch(e) { console.log('Audio blocked', e); }
+}
+
+function showToast(title, message) {
+    playBeep();
+    const container = $('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.innerHTML = `
+        <div>
+            <p class="font-bold text-yellow-500 text-sm">${esc(title)}</p>
+            <p class="text-xs mt-1">${esc(message)}</p>
+        </div>
+        <span class="toast-close" onclick="this.parentElement.remove()">×</span>
+    `;
+    container.appendChild(toast);
+    setTimeout(() => { if(toast.parentElement) toast.remove(); }, 6000);
+}
 
 function showLoader() { document.getElementById('loader').classList.remove('hide'); }
 function hideLoader() { document.getElementById('loader').classList.add('hide'); }
@@ -295,7 +345,7 @@ async function loadApp(user){
   if(!error && data && data.role === 'admin') {
       me=data; $('logoutBtn').classList.remove('hide');
       showScreen('adminScreen');loadAdminData();
-      listen(loadAdminData,null);
+      listenAdminNotifications(); // تشغيل إشعارات الإدارة
       return;
   }
 
@@ -313,6 +363,36 @@ async function loadApp(user){
     clearInterval(pollTimer);pollTimer=setInterval(renderDriverOrders,POLL_MS);
     startTrackingLocation(); 
   }
+}
+
+// === نظام إشعارات الإدارة ===
+function listenAdminNotifications() {
+    // قناة لمراقبة الطلبات الجديدة
+    db.channel('admin_orders_notif')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, payload => {
+          const o = payload.new;
+          showToast('📦 طلب جديد!', `تم طلب شحنة ${o.cargo_type} بقيمة ${o.price} ج.م.`);
+          loadAdminData(); // تحديث البيانات فوراً
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, payload => {
+          const o = payload.new; const old = payload.old;
+          if(old.status !== o.status) {
+              if(o.status === 'delivered') showToast('✅ تم التسليم!', `تم تسليم شحنة بقيمة ${o.price} ج.م.`);
+              if(o.status === 'accepted') showToast('🚚 تم قبول طلب', `سائق قبل شحنة بقيمة ${o.price} ج.م.`);
+              loadAdminData();
+          }
+      })
+      .subscribe();
+
+    // قناة لمراقبة المستخدمين الجدد
+    db.channel('admin_users_notif')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, payload => {
+          const u = payload.new;
+          const roleAr = u.role === 'driver' ? 'سائق' : u.role === 'client' ? 'عميل' : 'مستخدم';
+          showToast('👤 مستخدم جديد!', `تم تسجيل ${roleAr} جديد باسم: ${u.full_name}`);
+          loadAdminData(); // تحديث البيانات فوراً
+      })
+      .subscribe();
 }
 
 function startTrackingLocation() {
@@ -626,7 +706,63 @@ async function loadAdminData(){
   const{data:os}=await db.from('orders').select('*').order('created_at',{ascending:false});
   const{data:users}=await db.from('profiles').select('*');
   
-  const activeOrders = os ? os.filter(o => o.status === 'accepted' || o.status === 'picked_up') : [];
+  const allOrders = os || [];
+  const activeOrders = allOrders.filter(o => o.status === 'accepted' || o.status === 'picked_up');
+  const deliveredOrders = allOrders.filter(o => o.status === 'delivered');
+  const pendingOrders = allOrders.filter(o => o.status === 'pending');
+  
+  let totalRevenue = 0;
+  deliveredOrders.forEach(o => {
+    totalRevenue += Number(o.price) + Number(o.toll_fees || 0);
+  });
+  
+  const appCommission = totalRevenue * APP_COMMISSION_PERCENT;
+
+  if($('adminStats')) {
+    $('adminStats').innerHTML = `
+      <div class="bg-white p-3 rounded-xl shadow text-center border-t-4 border-blue-500">
+        <p class="text-xs text-gray-500">إجمالي الطلبات</p>
+        <p class="text-xl font-bold text-gray-800">${allOrders.length}</p>
+      </div>
+      <div class="bg-white p-3 rounded-xl shadow text-center border-t-4 border-green-500">
+        <p class="text-xs text-gray-500">تم التسليم</p>
+        <p class="text-xl font-bold text-green-600">${deliveredOrders.length}</p>
+      </div>
+      <div class="bg-white p-3 rounded-xl shadow text-center border-t-4 border-yellow-500">
+        <p class="text-xs text-gray-500">في الانتظار</p>
+        <p class="text-xl font-bold text-yellow-600">${pendingOrders.length}</p>
+      </div>
+      <div class="bg-white p-3 rounded-xl shadow text-center border-t-4 border-blue-400">
+        <p class="text-xs text-gray-500">في الطريق</p>
+        <p class="text-xl font-bold text-blue-500">${activeOrders.length}</p>
+      </div>
+      <div class="bg-white p-3 rounded-xl shadow text-center border-t-4 border-purple-500">
+        <p class="text-xs text-gray-500">إجمالي التداول</p>
+        <p class="text-xl font-bold text-purple-700">${money(totalRevenue)}</p>
+      </div>
+      <div class="bg-gray-900 p-3 rounded-xl shadow text-center border-t-4 border-yellow-500">
+        <p class="text-xs text-gray-300">نسبة التطبيق (${APP_COMMISSION_PERCENT * 100}%)</p>
+        <p class="text-2xl font-bold text-yellow-500">${money(appCommission)}</p>
+      </div>
+    `;
+  }
+
+  if($('adminAllOrders')) {
+    $('adminAllOrders').innerHTML = allOrders.map(o => {
+      let statusColor = o.status === 'delivered' ? 'text-green-600' : o.status === 'pending' ? 'text-yellow-600' : o.status === 'cancelled' ? 'text-red-600' : 'text-blue-600';
+      let bgBorder = o.status === 'delivered' ? 'border-green-500' : o.status === 'pending' ? 'border-yellow-500' : o.status === 'cancelled' ? 'border-red-500' : 'border-blue-500';
+      return `
+        <div class="card mb-2 text-sm border-r-4 ${bgBorder}">
+          <div class="flex justify-between font-bold mb-1">
+            <span class="${statusColor}">${STATUS[o.status] || o.status}</span>
+            <span>${money(Number(o.price) + Number(o.toll_fees || 0))}</span>
+          </div>
+          <p class="text-gray-600">📍 من: ${esc(o.pickup_address)} <br>🏁 إلى: ${esc(o.dropoff_address)}</p>
+          <p class="text-xs text-gray-400 mt-1">التاريخ: ${new Date(o.created_at).toLocaleString('ar-EG')}</p>
+        </div>
+      `;
+    }).join('') || '<p class="text-sm text-gray-500">لا توجد طلبات مسجلة</p>';
+  }
   
   if($('adminLiveTracking')) {
     const displayOrders = activeOrders.slice(0, 5); 
@@ -690,9 +826,8 @@ async function loadAdminData(){
 
 async function approveDriver(id){ try{ await rpc('approve_driver',{p_id:id}); alert('تم التفعيل'); loadAdminData(); }catch(e){alert(e.message);} }
 
-// دالة حذف المستخدم
 async function deleteUser(id, name) {
-  if(!confirm(`هل أنت متأكد من حذف حساب "${name}" نهائياً؟ لا يمكن التراجع عن هذه الخطوة.`)) return;
+  if(!confirm(`هل أنت متأكد من حذف حساب "${name}" نهائياً؟`)) return;
   showLoader();
   try {
     await rpc('delete_user_account', { p_user_id: id });
@@ -700,7 +835,7 @@ async function deleteUser(id, name) {
     loadAdminData();
   } catch (e) {
     console.error(e);
-    alert('حدث خطأ أثناء الحذف: ' + e.message + '\n(ملاحظة: إذا كان المستخدم لديه شحنات سابقة، قد يرفض النظام حذفه للحفاظ على سجل الشحنات).');
+    alert('حدث خطأ أثناء الحذف: ' + e.message);
   } finally {
     hideLoader();
   }
