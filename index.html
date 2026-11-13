@@ -17,7 +17,7 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
 .hide{display:none!important}
 #map{height:240px;width:100%;border-radius:8px;margin:8px 0;border:1px solid #ccc;z-index:0}
 .route-map{height:200px;width:100%;border-radius:8px;margin:8px 0;border:1px solid #ccc;z-index:0}
-.truck{font-size:24px;text-align:center;line-height:24px}
+.truck{font-size:24px;text-align:center;line-height:24px; filter: drop-shadow(0 0 3px white);}
 .star{font-size:26px;cursor:pointer;color:#d1d5db}.star:hover{color:#f59e0b}
 .inp{width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:.5rem;margin-bottom:.5rem;background:#fff}
 .card{background:#fff;padding:1rem;border-radius:.75rem;box-shadow:0 1px 2px #0001;margin-bottom:.75rem}
@@ -229,7 +229,9 @@ let live={},known={},mainChannel=null,debounce=null;
 let isAdminLogin = false;
 let watchId = null; 
 let lastLocationUpdate = 0; 
-let currentAdminFilter = 'all'; // متغير للفلترة
+let currentAdminFilter = 'all'; 
+
+let driverMarkers = {}; // لتخزين ماركرات السائقين وتحديثها بسلاسة
 
 // === الإشعارات ===
 function requestNotificationPermission() {
@@ -406,6 +408,15 @@ function listenAdminNotifications() {
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, payload => {
           const o = payload.new; const old = payload.old;
+          
+          // تحديث موقع الماركر بسلاسة من غير ما نعمل ريفريش للصفحة
+          if(old.driver_lat !== o.driver_lat) {
+             const containerId = `admin-map-${o.id}`;
+             if(driverMarkers[containerId] && o.driver_lat && o.driver_lng) {
+                driverMarkers[containerId].setLatLng([o.driver_lat, o.driver_lng]);
+             }
+          }
+
           if(old.status !== o.status) {
               if(o.status === 'delivered') showToast('✅ تم التسليم!', `تم تسليم شحنة بقيمة ${o.price} ج.م.`);
               if(o.status === 'accepted') showToast('🚚 تم قبول طلب', `سائق قبل شحنة بقيمة ${o.price} ج.م.`);
@@ -466,13 +477,22 @@ function listen(rerender,filter){
   if(mainChannel)db.removeChannel(mainChannel);
   const cfg={event:'*',schema:'public',table:'orders'};if(filter)cfg.filter=filter;
   mainChannel=db.channel('orders_'+me.id).on('postgres_changes',cfg,p=>{
-    const o=p.new;if(!o||!o.id)return;
+    const o=p.new; const old=p.old; if(!o||!o.id)return;
+    
+    // تحديث موقع الماركر بسلاسة
+    if(p.eventType === 'UPDATE' && old.driver_lat !== o.driver_lat) {
+        const containerId = `client-map-${o.id}`;
+        if(driverMarkers[containerId] && o.driver_lat && o.driver_lng) {
+            driverMarkers[containerId].setLatLng([o.driver_lat, o.driver_lng]);
+        }
+    }
+
     if(known[o.id]!==o.status || known[o.id+'_neg']!==o.negotiation_status){
       clearTimeout(debounce);debounce=setTimeout(()=>{
         known[o.id]=o.status; known[o.id+'_neg']=o.negotiation_status;
         rerender();
       },400);
-    }else if(live[o.id]) setDriverMarker(live[o.id],o); 
+    }
   }).subscribe();
 }
 
@@ -487,6 +507,7 @@ function clearAllMaps() {
       delete routeControls[key];
     }
   }
+  driverMarkers = {}; // مسح ماركرات السائقين
   live = {}; 
 }
 
@@ -530,13 +551,29 @@ async function searchAddress(type) {
 function drawRouteMap(containerId, lat1, lng1, lat2, lng2, driverLat=null, driverLng=null) {
   const el = $(containerId);
   if(!el) return;
-  if (routeControls[containerId]) return;
+
+  // تحديث الخريطة الموجودة بدل ما نعملها من الأول
+  if (routeControls[containerId]) {
+    if (driverLat && driverLng) {
+      if (driverMarkers[containerId]) {
+        driverMarkers[containerId].setLatLng([driverLat, driverLng]);
+      } else {
+        // لو الماركر مش موجود لأي سبب، نضيفه
+        driverMarkers[containerId] = L.marker([driverLat, driverLng], {icon: truckIcon}).addTo(routeControls[containerId]._map).bindPopup('السائق');
+      }
+    }
+    return;
+  }
 
   const m = L.map(el).setView([lat1, lng1], 11);
   L.tileLayer(TILE,{attribution:'© OpenStreetMap'}).addTo(m);
   L.marker([lat1, lng1]).addTo(m).bindPopup('التحميل');
   L.marker([lat2, lng2]).addTo(m).bindPopup('التسليم');
-  if(driverLat) { L.marker([driverLat, driverLng], {icon: truckIcon}).addTo(m).bindPopup('السائق'); }
+  
+  if(driverLat && driverLng) { 
+    driverMarkers[containerId] = L.marker([driverLat, driverLng], {icon: truckIcon}).addTo(m).bindPopup('السائق');
+    m.setView([driverLat, driverLng], 13); // زووم على السائق
+  }
 
   const routingControl = L.Routing.control({
     waypoints: [L.latLng(lat1, lng1), L.latLng(lat2, lng2)],
@@ -636,7 +673,7 @@ async function renderClientOrders(){
   
   setTimeout(() => {
     list.filter(o => o.status==='accepted'||o.status==='picked_up').forEach(o => {
-        drawRouteMap(`client-map-${o.id}`, o.pickup_lat, o.pickup_lng, o.dropoff_lat, o.dropoff_lng);
+        drawRouteMap(`client-map-${o.id}`, o.pickup_lat, o.pickup_lng, o.dropoff_lat, o.dropoff_lng, o.driver_lat, o.driver_lng);
     });
   }, 100);
 }
@@ -751,7 +788,6 @@ function filterAdminOrders(status) {
 async function loadAdminData(){
   clearAllMaps(); 
   
-  // جلب الطلبات مع بيانات العميل والسواق
   const{data:os}=await db.from('orders').select('*, client:profiles!orders_client_id_fkey(full_name, phone), driver:profiles!orders_driver_id_fkey(full_name, phone)').order('created_at',{ascending:false});
   const{data:users}=await db.from('profiles').select('*');
   
@@ -796,7 +832,6 @@ async function loadAdminData(){
     `;
   }
 
-  // فلترة الطلبات بناءً على الاختيار
   let filteredOrders = allOrders;
   let filterTitle = "سجل كل الطلبات 📜";
   if (currentAdminFilter === 'pending') { filteredOrders = pendingOrders; filterTitle = "سجل الطلبات (في الانتظار) 📜"; }
