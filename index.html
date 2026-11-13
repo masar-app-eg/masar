@@ -67,7 +67,10 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
     <div class="bg-yellow-500 text-black font-black text-xl rounded-lg w-10 h-10 flex items-center justify-center">M</div>
     <h1 class="text-xl font-bold">مسار <span class="text-yellow-500 text-sm">MASAR</span></h1>
   </div>
-  <button onclick="logout()" id="logoutBtn" class="hide text-sm bg-gray-700 px-3 py-1 rounded">خروج</button>
+  <div class="flex gap-2">
+    <button onclick="changePassword()" id="changePwBtn" class="hide text-sm bg-blue-600 px-3 py-1 rounded text-white font-bold">تغيير الباسورد</button>
+    <button onclick="logout()" id="logoutBtn" class="hide text-sm bg-gray-700 px-3 py-1 rounded">خروج</button>
+  </div>
 </header>
 
 <main class="max-w-md mx-auto p-4">
@@ -87,7 +90,7 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
     <input type="tel" id="phoneInput" placeholder="رقم الموبايل (مثال: 01012345678)" class="inp font-bold" dir="ltr" maxlength="11">
   </div>
 
-  <input type="password" id="password" placeholder="اكتب أي باسورد سهل تفتكره" class="inp text-right" dir="rtl">
+  <input type="password" id="password" placeholder="اكتب الباسورد" class="inp text-right" dir="rtl">
   
   <div id="regFields" class="hide">
     <select id="role" class="inp" onchange="$('driverFields').classList.toggle('hide',this.value!=='driver')">
@@ -373,7 +376,9 @@ async function loadApp(user){
   const{data,error}=await db.from('profiles').select('*').eq('id',user.id).maybeSingle();
   
   if(!error && data && data.role === 'admin') {
-      me=data; $('logoutBtn').classList.remove('hide');
+      me=data; 
+      $('logoutBtn').classList.remove('hide');
+      $('changePwBtn').classList.remove('hide');
       showScreen('adminScreen');loadAdminData();
       listenAdminNotifications(); 
       if (Notification.permission === "granted") {
@@ -384,7 +389,9 @@ async function loadApp(user){
   }
 
   if(error||!data){alert('تعذر تحميل الحساب');await db.auth.signOut();return showScreen('authScreen');}
-  me=data; $('logoutBtn').classList.remove('hide');
+  me=data; 
+  $('logoutBtn').classList.remove('hide');
+  $('changePwBtn').classList.remove('hide');
   
   if(me.role==='client'){
     showScreen('clientScreen');paintWallet();
@@ -399,6 +406,28 @@ async function loadApp(user){
   }
 }
 
+// === دوال الحساب ===
+async function changePassword() {
+    const newPassword = prompt("اكتب الباسورد الجديد (6 حروف أو أرقام على الأقل):");
+    if (!newPassword) return; 
+    
+    if (newPassword.length < 6) {
+        alert("الباسورد لازم يكون 6 حروف أو أرقام على الأقل.");
+        return;
+    }
+
+    showLoader();
+    try {
+        const { data, error } = await db.auth.updateUser({ password: newPassword });
+        if (error) throw error;
+        alert("تم تغيير الباسورد بنجاح! استخدم الباسورد الجديد في المرة القادمة.");
+    } catch (e) {
+        alert("حدث خطأ أثناء تغيير الباسورد: " + e.message);
+    } finally {
+        hideLoader();
+    }
+}
+
 function listenAdminNotifications() {
     db.channel('admin_orders_notif')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, payload => {
@@ -409,7 +438,6 @@ function listenAdminNotifications() {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, payload => {
           const o = payload.new; const old = payload.old;
           
-          // تحديث موقع الماركر بسلاسة من غير ما نعمل ريفريش للصفحة
           if(old.driver_lat !== o.driver_lat) {
              const containerId = `admin-map-${o.id}`;
              if(driverMarkers[containerId] && o.driver_lat && o.driver_lng) {
@@ -479,7 +507,6 @@ function listen(rerender,filter){
   mainChannel=db.channel('orders_'+me.id).on('postgres_changes',cfg,p=>{
     const o=p.new; const old=p.old; if(!o||!o.id)return;
     
-    // تحديث موقع الماركر بسلاسة
     if(p.eventType === 'UPDATE' && old.driver_lat !== o.driver_lat) {
         const containerId = `client-map-${o.id}`;
         if(driverMarkers[containerId] && o.driver_lat && o.driver_lng) {
@@ -507,7 +534,7 @@ function clearAllMaps() {
       delete routeControls[key];
     }
   }
-  driverMarkers = {}; // مسح ماركرات السائقين
+  driverMarkers = {}; 
   live = {}; 
 }
 
@@ -552,13 +579,11 @@ function drawRouteMap(containerId, lat1, lng1, lat2, lng2, driverLat=null, drive
   const el = $(containerId);
   if(!el) return;
 
-  // تحديث الخريطة الموجودة بدل ما نعملها من الأول
   if (routeControls[containerId]) {
     if (driverLat && driverLng) {
       if (driverMarkers[containerId]) {
         driverMarkers[containerId].setLatLng([driverLat, driverLng]);
       } else {
-        // لو الماركر مش موجود لأي سبب، نضيفه
         driverMarkers[containerId] = L.marker([driverLat, driverLng], {icon: truckIcon}).addTo(routeControls[containerId]._map).bindPopup('السائق');
       }
     }
@@ -572,7 +597,7 @@ function drawRouteMap(containerId, lat1, lng1, lat2, lng2, driverLat=null, drive
   
   if(driverLat && driverLng) { 
     driverMarkers[containerId] = L.marker([driverLat, driverLng], {icon: truckIcon}).addTo(m).bindPopup('السائق');
-    m.setView([driverLat, driverLng], 13); // زووم على السائق
+    m.setView([driverLat, driverLng], 13); 
   }
 
   const routingControl = L.Routing.control({
@@ -895,7 +920,6 @@ async function loadAdminData(){
 
     let html = '';
 
-    // قسم العملاء
     html += `<h4 class="font-bold text-blue-700 mb-2 mt-4 text-sm">العملاء المسجلين (${clients.length})</h4>`;
     if(clients.length > 0) {
         html += clients.map(u => `
@@ -914,7 +938,6 @@ async function loadAdminData(){
         html += '<p class="text-xs text-gray-500 mb-4">لا يوجد عملاء مسجلين</p>';
     }
 
-    // قسم السواقين في الانتظار
     if(pendingDrivers.length > 0) {
       html += `<h4 class="font-bold text-red-600 mb-2 mt-6 text-sm">⚠️ سواقين في انتظار الموافقة (${pendingDrivers.length})</h4>`;
       html += pendingDrivers.map(u => `
@@ -932,7 +955,6 @@ async function loadAdminData(){
       `).join('');
     }
 
-    // قسم السواقين المفعلين
     html += `<h4 class="font-bold text-gray-700 mb-2 mt-6 text-sm">السائقين المفعلين (${approvedDrivers.length})</h4>`;
     html += approvedDrivers.map(u => `
       <div class="card flex justify-between items-center mb-2 opacity-80 border-r-4 border-green-500">
