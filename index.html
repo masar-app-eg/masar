@@ -376,14 +376,14 @@ async function loadApp(user){
   if(!user)return showScreen('authScreen');
   const{data,error}=await db.from('profiles').select('*').eq('id',user.id).maybeSingle();
   
-  // التعديل هنا: لو مفيش رقم موبايل، يطرده فوراً
-  if(error || !data || !data.phone) {
-      alert('عذراً، يجب أن يكون لديك رقم موبايل مسجل لاستخدام التطبيق. يرجى التواصل مع الإدارة.');
+  if(error || !data) {
+      alert('تعذر تحميل الحساب');
       await db.auth.signOut();
       return showScreen('authScreen');
   }
 
-  if(!error && data && data.role === 'admin') {
+  // 1. لو المستخدم أدمن، يدخل فوراً من غير أي شروط تانية
+  if(data.role === 'admin') {
       me=data; 
       $('logoutBtn').classList.remove('hide');
       $('changePwBtn').classList.remove('hide');
@@ -396,7 +396,13 @@ async function loadApp(user){
       return;
   }
 
-  if(error||!data){alert('تعذر تحميل الحساب');await db.auth.signOut();return showScreen('authScreen');}
+  // 2. لو المستخدم عميل أو سائق، لازم يكون عنده رقم موبايل مسجل
+  if(!data.phone) {
+      alert('عذراً، يجب أن يكون لديك رقم موبايل مسجل لاستخدام التطبيق. يرجى التواصل مع الإدارة.');
+      await db.auth.signOut();
+      return showScreen('authScreen');
+  }
+
   me=data; 
   $('logoutBtn').classList.remove('hide');
   $('changePwBtn').classList.remove('hide');
@@ -855,7 +861,7 @@ async function loadAdminData(){
         <p class="text-xl font-bold text-blue-500">${activeOrders.length}</p>
       </div>
       <div class="bg-white p-3 rounded-xl shadow text-center border-t-4 border-purple-500">
-        <p class="text-xs text-gray-500">إجمالي التداول</p>
+        <p class="text-xs text-gray-500">إجمالي التداول (للمسلم فقط)</p>
         <p class="text-xl font-bold text-purple-700">${money(totalRevenue)}</p>
       </div>
       <div class="bg-gray-900 p-3 rounded-xl shadow text-center border-t-4 border-yellow-500">
@@ -895,7 +901,7 @@ async function loadAdminData(){
           <p class="text-gray-600 mb-1">📍 من: ${esc(o.pickup_address)} <br>🏁 إلى: ${esc(o.dropoff_address)}</p>
           <div class="bg-gray-100 p-2 rounded text-xs mt-1">
             <p><strong>العميل:</strong> ${esc(clientName)} ${clientPhone ? '('+esc(clientPhone)+')' : ''} ${clientWA}</p>
-            <p><strong>السائق:</strong> ${esc(driverName)} ${driverPhone ? '('+esc(driverPhone)+')' : ''} ${driverWA}</p>
+            <p><strong>السائق:</strong> ${esc(driverName)} ${driverPhone ? '('+esc(driverPhone)+')' : '<span class="text-red-500 font-bold">(رقم غير متوفر)</span>'} ${driverWA}</p>
           </div>
           <p class="text-xs text-gray-400 mt-2">التاريخ: ${new Date(o.created_at).toLocaleString('ar-EG')}</p>
         </div>
@@ -934,10 +940,10 @@ async function loadAdminData(){
           <div class="card flex justify-between items-center mb-2 border-r-4 border-blue-500">
             <div>
               <p class="font-bold text-sm">${esc(u.full_name)}</p>
-              <p class="text-xs text-gray-500">${esc(u.phone)}</p>
+              <p class="text-xs ${u.phone ? 'text-gray-500' : 'text-red-500 font-bold'}">${u.phone ? esc(u.phone) : 'رقم غير متوفر'}</p>
             </div>
             <div class="flex items-center gap-2">
-              <a href="https://wa.me/2${u.phone}" target="_blank" class="bg-green-500 text-white text-xs px-2 py-1 rounded shadow font-bold">واتساب</a>
+              ${u.phone ? `<a href="https://wa.me/2${u.phone}" target="_blank" class="bg-green-500 text-white text-xs px-2 py-1 rounded shadow font-bold">واتساب</a>` : ''}
               <button onclick="deleteUser('${u.id}', '${esc(u.full_name)}')" class="bg-red-500 text-white text-xs px-2 py-1 rounded">🗑️</button>
             </div>
           </div>
@@ -952,7 +958,7 @@ async function loadAdminData(){
         <div class="card flex justify-between items-center mb-2 border-r-4 border-red-500">
           <div>
             <p class="font-bold text-sm">${esc(u.full_name)}</p>
-            <p class="text-xs text-gray-500">${esc(u.phone)}</p>
+            <p class="text-xs ${u.phone ? 'text-gray-500' : 'text-red-500 font-bold'}">${u.phone ? esc(u.phone) : 'رقم غير متوفر'}</p>
             <p class="text-xs text-blue-700 font-bold mt-1">🚚 ${esc(u.vehicle_type)} | لوحة: ${esc(u.plate_number)}</p>
           </div>
           <div class="flex gap-2 items-center">
@@ -968,12 +974,12 @@ async function loadAdminData(){
       <div class="card flex justify-between items-center mb-2 opacity-80 border-r-4 border-green-500">
         <div>
           <p class="font-bold text-sm">${esc(u.full_name)} <span class="text-xs font-normal text-gray-500">(سائق)</span></p>
-          <p class="text-xs text-gray-500">${esc(u.phone)}</p>
+          <p class="text-xs ${u.phone ? 'text-gray-500' : 'text-red-500 font-bold'}">${u.phone ? esc(u.phone) : 'رقم غير متوفر'}</p>
           <p class="text-xs text-blue-700 font-bold mt-1">🚚 ${esc(u.vehicle_type)} | لوحة: ${esc(u.plate_number)}</p>
         </div>
         <div class="flex items-center gap-2">
           <span class="text-green-500 text-xs font-bold">✔️</span>
-          <a href="https://wa.me/2${u.phone}" target="_blank" class="bg-green-500 text-white text-xs px-2 py-1 rounded shadow font-bold">واتساب</a>
+          ${u.phone ? `<a href="https://wa.me/2${u.phone}" target="_blank" class="bg-green-500 text-white text-xs px-2 py-1 rounded shadow font-bold">واتساب</a>` : ''}
           <button onclick="deleteUser('${u.id}', '${esc(u.full_name)}')" class="bg-red-500 text-white text-xs px-2 py-1 rounded">🗑️</button>
         </div>
       </div>
