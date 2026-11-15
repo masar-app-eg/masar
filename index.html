@@ -87,17 +87,17 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;padding-bottom:80px}
   </div>
 
   <div id="userPhoneField">
-    <input type="tel" id="phoneInput" placeholder="رقم الموبايل (مثال: 01012345678)" class="inp font-bold" dir="ltr" maxlength="11">
+    <input type="tel" id="phoneInput" placeholder="رقم الموبايل (مثال: 01012345678)" class="inp font-bold" dir="ltr" maxlength="11" required>
   </div>
 
-  <input type="password" id="password" placeholder="اكتب الباسورد" class="inp text-right" dir="rtl">
+  <input type="password" id="password" placeholder="اكتب الباسورد" class="inp text-right" dir="rtl" required>
   
   <div id="regFields" class="hide">
     <select id="role" class="inp" onchange="$('driverFields').classList.toggle('hide',this.value!=='driver')">
       <option value="client">عميل (أطلب شحنة)</option>
       <option value="driver">سائق (أستلم شحنات)</option>
     </select>
-    <input type="text" id="name" placeholder="الاسم بالكامل" class="inp">
+    <input type="text" id="name" placeholder="الاسم بالكامل" class="inp" required>
     <div id="driverFields" class="hide">
       <input type="text" id="vehicle" placeholder="نوع العربية (سوزوكي / ربع نقل / جامبو)" class="inp">
       <input type="text" id="plate" placeholder="رقم اللوحة (مطلوب إجبارياً)" class="inp">
@@ -234,7 +234,7 @@ let watchId = null;
 let lastLocationUpdate = 0; 
 let currentAdminFilter = 'all'; 
 
-let driverMarkers = {}; // لتخزين ماركرات السائقين وتحديثها بسلاسة
+let driverMarkers = {}; 
 
 // === الإشعارات ===
 function requestNotificationPermission() {
@@ -329,6 +329,7 @@ async function handleAuth(){
     } else {
       phone = $('phoneInput').value.trim();
       if(!phone) throw new Error('اكتب رقم الموبايل');
+      if(phone.length < 11) throw new Error('رقم الموبايل لازم يكون 11 رقم');
       emailToUse = `${phone}@masar.app`;
     }
 
@@ -375,6 +376,13 @@ async function loadApp(user){
   if(!user)return showScreen('authScreen');
   const{data,error}=await db.from('profiles').select('*').eq('id',user.id).maybeSingle();
   
+  // التعديل هنا: لو مفيش رقم موبايل، يطرده فوراً
+  if(error || !data || !data.phone) {
+      alert('عذراً، يجب أن يكون لديك رقم موبايل مسجل لاستخدام التطبيق. يرجى التواصل مع الإدارة.');
+      await db.auth.signOut();
+      return showScreen('authScreen');
+  }
+
   if(!error && data && data.role === 'admin') {
       me=data; 
       $('logoutBtn').classList.remove('hide');
